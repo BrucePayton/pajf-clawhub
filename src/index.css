@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@layer base {
+  html, body {
+    @apply antialiased text-neutral-900;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-neutral-100;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-neutral-300 rounded-full hover:bg-neutral-400 transition-colors;
+}
+
+/* Print Styles for PPT Export */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    background: white !important;
+  }
+
+  /* Force the canvas to be a single page */
+  .fixed.inset-0 {
+    position: relative !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .shrink-0 {
+    display: none !important; /* Hide header/footer in print if needed, or keep them */
+  }
+
+  .bg-neutral-50 {
+    background: white !important;
+  }
+
+  .shadow-sm, .shadow-xl {
+    box-shadow: none !important;
+    border: 1px solid #eee !important;
+  }
+}
+
+/* Animation for arrows */
+@keyframes pulse-x {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(5px); }
+}
+
+.animate-pulse-x {
+  animation: pulse-x 2s infinite ease-in-out;
+}
