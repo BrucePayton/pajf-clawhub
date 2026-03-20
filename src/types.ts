@@ -30,8 +30,10 @@ export interface Case {
   version: number;
   lastModified: number;
   author: string;
+  umNumber: string;
   team: string;
   organization: Organization;
+  ownerId?: string;
   
   // Section 01: Challenges
   challenges: {
@@ -55,4 +57,12 @@ export interface Case {
   roadmap: {
     items: RoadmapItem[];
   };
+}
+
+export interface DbConfig {
+  host: string;
+  port: number;
+  user: string;
+  password?: string;
+  database: string;
 }

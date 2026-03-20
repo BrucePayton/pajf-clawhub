@@ -12,7 +12,7 @@ const splitText = (text: string) => {
     const isChinese = /[\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef]/.test(part);
     parts.push({
       text: part,
-      options: { fontFace: isChinese ? "Microsoft YaHei" : "Arial" }
+      options: { fontFace: isChinese ? "STKaiti" : "Times New Roman" }
     });
   }
   return parts;
@@ -53,7 +53,7 @@ export const exportToPptx = async (caseData: Case) => {
   });
 
   // Author & Organization Info
-  const authorInfo = `${caseData.organization} · ${caseData.team} · ${caseData.author}`;
+  const authorInfo = `${caseData.organization} · ${caseData.team} · ${caseData.author} (${caseData.umNumber})`;
   slide.addText(splitText(authorInfo), {
     x: 0.5,
     y: 0.85,
@@ -232,7 +232,17 @@ export const exportToPptx = async (caseData: Case) => {
 
   caseData.businessValue.metrics.forEach((metric, index) => {
     const yOffset = 1.6 + index * 0.7;
-    slide.addText(splitText(metric.label), {
+    
+    // Add icon if available
+    let iconSymbol = "";
+    switch(metric.icon) {
+      case 'clock': iconSymbol = "⏰ "; break;
+      case 'calendar': iconSymbol = "📅 "; break;
+      case 'zap': iconSymbol = "⚡ "; break;
+      case 'trending-up': iconSymbol = "📈 "; break;
+    }
+
+    slide.addText(splitText(iconSymbol + metric.label), {
       x: 7.6,
       y: yOffset,
       w: 1.8,
@@ -303,6 +313,20 @@ export const exportToPptx = async (caseData: Case) => {
     bold: true,
   });
 
-  // Save the Presentation
-  await pptx.writeFile({ fileName: `${caseData.title}.pptx` });
+  // Save the Presentation with a more robust method for iframes
+  try {
+    const blob = await pptx.write({ outputType: "blob" });
+    const url = window.URL.createObjectURL(blob as Blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${caseData.title.replace(/[\\/:*?"<>|]/g, '_')}.pptx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error("PPTX write error:", err);
+    // Fallback to library's internal method if blob fails
+    await pptx.writeFile({ fileName: `${caseData.title.replace(/[\\/:*?"<>|]/g, '_')}.pptx` });
+  }
 };
