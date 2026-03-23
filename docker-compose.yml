@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  # 后端 Node.js API 服务
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: openclaw-api
+    ports:
+      - "3010:3010"
+    environment:
+      - NODE_ENV=production
+      - PORT=3010
+      - HOST=0.0.0.0
+      # 如果有其他环境变量（如 GEMINI_API_KEY, 数据库配置），可以在这里注入
+      # - GEMINI_API_KEY=${GEMINI_API_KEY}
+    volumes:
+      - ./data:/app/data # 持久化挂载 JSON 数据目录
+    restart: always
+    networks:
+      - openclaw-net
+
+  # 前端 Nginx 静态托管与反向代理服务
+  web:
+    image: nginx:latest
+    container_name: openclaw-nginx
+    ports:
+      - "3080:80" # 映射到宿主机的 3080 端口访问前端
+    volumes:
+      - ./dist:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api # 确保后端先启动
+    restart: always
+    networks:
+      - openclaw-net
+
+networks:
+  openclaw-net:
+    driver: bridge
