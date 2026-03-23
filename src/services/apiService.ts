@@ -26,9 +26,40 @@ export const apiService = {
     return null;
   },
 
+  // User Management
+  registerUser: async (username: string, password: string, email?: string, role?: string): Promise<{ success: boolean; user?: any; message?: string }> => {
+    const response = await fetch(`${API_URL}/api/users/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, email, role })
+    });
+    return await response.json();
+  },
+
+  getUsers: async (): Promise<any[]> => {
+    const response = await fetch(`${API_URL}/api/users`);
+    if (response.ok) {
+      return await response.json();
+    }
+    return [];
+  },
+
+  deleteUser: async (id: string): Promise<{ success: boolean; message?: string }> => {
+    const response = await fetch(`${API_URL}/api/users/${id}`, {
+      method: 'DELETE'
+    });
+    return await response.json();
+  },
+
   // Cases
-  getCases: async (): Promise<any[]> => {
-    const response = await fetch(`${API_URL}/api/cases`);
+  // owner_id: if provided, shows public + user's private cases; if undefined, shows only public cases
+  getCases: async (owner_id?: string): Promise<any[]> => {
+    let url = `${API_URL}/api/cases`;
+    const params = new URLSearchParams();
+    if (owner_id) params.set('owner_id', owner_id);
+    if (params.toString()) url += `?${params.toString()}`;
+
+    const response = await fetch(url);
     if (response.ok) {
       return await response.json();
     }

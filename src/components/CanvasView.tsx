@@ -47,7 +47,7 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
           <div>
             <div className="flex items-center gap-3 mb-1.5">
               <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-neutral-900">{caseData.title}</h1>
-              <span className="px-2 py-1 bg-brand-500 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-md shadow-brand-500/20">v{caseData.version.toFixed(1)}</span>
+              <span className="px-2 py-1 bg-brand-500 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-md shadow-brand-500/20">v{(caseData.version ?? 0).toFixed(1)}</span>
             </div>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-neutral-400 font-semibold text-[10px] uppercase tracking-widest mt-2">
               <span className="flex items-center gap-1.5"><Globe className="w-3.5 h-3.5 text-brand-500" /> {caseData.organization}</span>
@@ -56,7 +56,7 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
               <span className="w-1.5 h-1.5 bg-neutral-200 rounded-full" />
               <span className="flex items-center gap-1.5"><Layout className="w-3.5 h-3.5 text-brand-500" /> {caseData.team}</span>
               <span className="w-1.5 h-1.5 bg-neutral-200 rounded-full" />
-              <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-brand-500" /> {new Date(caseData.lastModified).toLocaleDateString()}</span>
+              <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-brand-500" /> {new Date(caseData.lastModified ?? Date.now()).toLocaleDateString()}</span>
             </div>
           </div>
         </div>
@@ -101,10 +101,10 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
               <h2 className="text-lg font-bold tracking-tight">核心挑战</h2>
             </div>
             <p className="text-neutral-600 leading-relaxed font-medium mb-6 text-sm print:text-neutral-600">
-              {caseData.challenges.background}
+              {caseData.challenges?.background ?? ''}
             </p>
             <div className="space-y-2.5">
-              {caseData.challenges.painPoints.map((point, idx) => (
+              {(caseData.challenges?.painPoints ?? []).map((point, idx) => (
                 <div key={idx} className="flex items-center gap-2.5 p-3 bg-neutral-50 rounded-xl border border-neutral-200/60 print:bg-neutral-50 print:border-neutral-100">
                   <div className="w-1 h-1 bg-brand-500 rounded-full shrink-0" />
                   <span className="text-xs font-semibold text-neutral-800 print:text-neutral-800">{point}</span>
@@ -126,7 +126,7 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
               <h2 className="text-lg font-bold tracking-tight">业务价值</h2>
             </div>
             <div className="grid grid-cols-1 gap-3 overflow-y-auto pr-2 -mr-2 flex-1 custom-scrollbar">
-              {caseData.businessValue.metrics.map((metric) => (
+              {(caseData.businessValue?.metrics ?? []).map((metric) => (
                 <div key={metric.id} className="p-4 bg-neutral-50 rounded-xl border border-neutral-200/60 flex items-center justify-between print:bg-neutral-50 print:border-neutral-100">
                   <div>
                     <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider mb-0.5 print:text-neutral-400">{metric.label}</p>
@@ -162,13 +162,13 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
             </div>
             <div className="flex-1 overflow-y-auto pr-4 -mr-4 custom-scrollbar relative">
               <div className="grid grid-cols-1 gap-6 relative">
-                {caseData.implementation.steps.map((step, idx) => (
+                {(caseData.implementation?.steps ?? []).map((step, idx) => (
                   <div key={step.id} className="flex gap-5 group">
                     <div className="flex flex-col items-center">
                       <div className="w-8 h-8 bg-neutral-100 rounded-lg flex items-center justify-center font-bold text-neutral-400 group-hover:bg-brand-500 group-hover:text-white transition-all print:bg-neutral-100 print:text-neutral-400 text-sm">
                         {idx + 1}
                       </div>
-                      {idx !== caseData.implementation.steps.length - 1 && (
+                      {idx !== (caseData.implementation?.steps ?? []).length - 1 && (
                         <div className="w-0.5 flex-1 bg-neutral-100 my-2 rounded-full print:bg-neutral-100" />
                       )}
                     </div>
@@ -211,7 +211,7 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
               <h2 className="text-lg font-bold tracking-tight">未来演进规划</h2>
             </div>
             <div className="space-y-4 overflow-y-auto pr-2 -mr-2 flex-1 custom-scrollbar">
-              {caseData.roadmap.items.map((item) => (
+              {(caseData.roadmap?.items ?? []).map((item) => (
                 <div key={item.id} className="p-5 bg-neutral-50 rounded-xl border border-neutral-200/60 space-y-2.5 print:bg-neutral-50 print:border-neutral-100 group hover:border-brand-200 transition-colors">
                   <div className="flex justify-between items-start">
                     <span className="px-2 py-0.5 bg-brand-500 text-white rounded-md text-[9px] font-bold uppercase tracking-wider shadow-md shadow-brand-500/20">{item.date}</span>

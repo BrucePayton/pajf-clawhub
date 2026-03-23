@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Save, Globe, Target, Zap, TrendingUp, Calendar, Plus, Trash2, Clock, CheckCircle, Rocket, Layout, ChevronRight, Info, Upload, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Save, Globe, Target, Zap, TrendingUp, Calendar, Plus, Trash2, Clock, CheckCircle, Rocket, Layout, ChevronRight, Info, Upload, Image as ImageIcon, Lock, Eye } from 'lucide-react';
 import { Case, CaseStep, MetricCard, RoadmapItem } from '../types';
 
 interface EditorProps {
@@ -22,7 +22,7 @@ export const Editor: React.FC<EditorProps> = ({
 }) => {
   const handleImageUpload = (index: number, file: File) => {
     if (!file) return;
-    
+
     // Check file size (limit to 10MB)
     if (file.size > 10 * 1024 * 1024) {
       showToast('图片太大（超过 10MB），请上传较小的图片。', 'error');
@@ -32,7 +32,7 @@ export const Editor: React.FC<EditorProps> = ({
     const reader = new FileReader();
     reader.onloadend = () => {
       const base64String = reader.result as string;
-      const newSteps = [...caseData.implementation.steps];
+      const newSteps = [...(caseData.implementation?.steps || [])];
       newSteps[index].imageUrl = base64String;
       setCaseData((prev: any) => ({
         ...prev,
@@ -46,29 +46,29 @@ export const Editor: React.FC<EditorProps> = ({
   };
   const addStep = () => {
     const newStep: CaseStep = { id: Date.now().toString(), title: '', description: '', imageUrl: '' };
-    setCaseData((prev: any) => ({ ...prev, implementation: { ...prev.implementation, steps: [...prev.implementation.steps, newStep] } }));
+    setCaseData((prev: any) => ({ ...prev, implementation: { ...prev.implementation, steps: [...(prev.implementation?.steps || []), newStep] } }));
   };
 
   const removeStep = (id: string) => {
-    setCaseData((prev: any) => ({ ...prev, implementation: { ...prev.implementation, steps: prev.implementation.steps.filter((s: any) => s.id !== id) } }));
+    setCaseData((prev: any) => ({ ...prev, implementation: { ...prev.implementation, steps: (prev.implementation?.steps || []).filter((s: any) => s.id !== id) } }));
   };
 
   const addMetric = () => {
     const newMetric: MetricCard = { id: Date.now().toString(), label: '', value: '', subtext: '', icon: 'trending-up' };
-    setCaseData((prev: any) => ({ ...prev, businessValue: { ...prev.businessValue, metrics: [...prev.businessValue.metrics, newMetric] } }));
+    setCaseData((prev: any) => ({ ...prev, businessValue: { ...prev.businessValue, metrics: [...(prev.businessValue?.metrics || []), newMetric] } }));
   };
 
   const removeMetric = (id: string) => {
-    setCaseData((prev: any) => ({ ...prev, businessValue: { ...prev.businessValue, metrics: prev.businessValue.metrics.filter((m: any) => m.id !== id) } }));
+    setCaseData((prev: any) => ({ ...prev, businessValue: { ...prev.businessValue, metrics: (prev.businessValue?.metrics || []).filter((m: any) => m.id !== id) } }));
   };
 
   const addRoadmapItem = () => {
     const newItem: RoadmapItem = { id: Date.now().toString(), task: '', content: '', date: '' };
-    setCaseData((prev: any) => ({ ...prev, roadmap: { ...prev.roadmap, items: [...prev.roadmap.items, newItem] } }));
+    setCaseData((prev: any) => ({ ...prev, roadmap: { ...prev.roadmap, items: [...(prev.roadmap?.items || []), newItem] } }));
   };
 
   const removeRoadmapItem = (id: string) => {
-    setCaseData((prev: any) => ({ ...prev, roadmap: { ...prev.roadmap, items: prev.roadmap.items.filter((i: any) => i.id !== id) } }));
+    setCaseData((prev: any) => ({ ...prev, roadmap: { ...prev.roadmap, items: (prev.roadmap?.items || []).filter((i: any) => i.id !== id) } }));
   };
 
   return (
@@ -85,7 +85,7 @@ export const Editor: React.FC<EditorProps> = ({
           <div>
             <div className="flex items-center gap-3 mb-0.5">
               <h1 className="text-lg font-bold text-neutral-900 tracking-tight">{caseData.title || '未命名案例'}</h1>
-              <span className="px-1.5 py-0.5 bg-neutral-100 text-neutral-500 rounded-md text-[10px] font-bold uppercase tracking-wider">v{caseData.version}</span>
+              <span className="px-1.5 py-0.5 bg-neutral-100 text-neutral-500 rounded-md text-[10px] font-bold uppercase tracking-wider">v{(caseData.version ?? 0).toFixed(1)}</span>
             </div>
             <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest flex items-center gap-1.5">
               <Globe className="w-3 h-3" />
@@ -94,14 +94,37 @@ export const Editor: React.FC<EditorProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button 
+          <div className="flex items-center gap-2 px-3 py-2 bg-neutral-50 rounded-xl border border-neutral-200">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={!!caseData.isPublic}
+                onChange={(e) => setCaseData({ ...caseData, isPublic: e.target.checked })}
+                className="w-4 h-4 rounded border-neutral-300 text-brand-500 focus:ring-brand-500"
+              />
+              <span className="text-xs font-bold text-neutral-600 flex items-center gap-1.5">
+                {caseData.isPublic ? (
+                  <>
+                    <Eye className="w-3.5 h-3.5" />
+                    公开
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-3.5 h-3.5" />
+                    私密
+                  </>
+                )}
+              </span>
+            </label>
+          </div>
+          <button
             onClick={onSave}
             className="btn-secondary text-sm"
           >
             <Save className="w-4 h-4" />
             保存草稿
           </button>
-          <button 
+          <button
             onClick={onPublish}
             className="btn-primary text-sm"
           >
@@ -199,7 +222,7 @@ export const Editor: React.FC<EditorProps> = ({
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider ml-1">背景描述</label>
               <textarea 
-                value={caseData.challenges.background}
+                value={caseData.challenges?.background ?? ''}
                 onChange={(e) => setCaseData({ ...caseData, challenges: { ...caseData.challenges, background: e.target.value } })}
                 className="input-modern min-h-[100px] resize-none"
                 placeholder="描述业务背景..."
@@ -208,7 +231,7 @@ export const Editor: React.FC<EditorProps> = ({
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider ml-1">核心目标</label>
               <textarea 
-                value={caseData.challenges.objectives}
+                value={caseData.challenges?.objectives ?? ''}
                 onChange={(e) => setCaseData({ ...caseData, challenges: { ...caseData.challenges, objectives: e.target.value } })}
                 className="input-modern min-h-[80px] resize-none"
                 placeholder="描述项目目标..."
@@ -218,7 +241,7 @@ export const Editor: React.FC<EditorProps> = ({
               <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider ml-1">关键痛点 (以逗号分隔)</label>
               <input 
                 type="text" 
-                value={caseData.challenges.painPoints.join(', ')}
+                value={(caseData.challenges?.painPoints ?? []).join(', ')}
                 onChange={(e) => setCaseData({ ...caseData, challenges: { ...caseData.challenges, painPoints: e.target.value.split(',').map(s => s.trim()) } })}
                 className="input-modern"
                 placeholder="痛点1, 痛点2, 痛点3..."
@@ -244,7 +267,7 @@ export const Editor: React.FC<EditorProps> = ({
             </button>
           </div>
           <div className="space-y-4">
-            {caseData.implementation.steps.map((step, index) => (
+            {(caseData.implementation?.steps ?? []).map((step, index) => (
               <motion.div 
                 key={step.id}
                 initial={{ opacity: 0, x: -20 }}
@@ -260,7 +283,7 @@ export const Editor: React.FC<EditorProps> = ({
                       type="text" 
                       value={step.title}
                       onChange={(e) => {
-                        const newSteps = [...caseData.implementation.steps];
+                        const newSteps = [...(caseData.implementation?.steps ?? [])];
                         newSteps[index].title = e.target.value;
                         setCaseData({ ...caseData, implementation: { ...caseData.implementation, steps: newSteps } });
                       }}
@@ -270,7 +293,7 @@ export const Editor: React.FC<EditorProps> = ({
                     <textarea 
                       value={step.description}
                       onChange={(e) => {
-                        const newSteps = [...caseData.implementation.steps];
+                        const newSteps = [...(caseData.implementation?.steps ?? [])];
                         newSteps[index].description = e.target.value;
                         setCaseData({ ...caseData, implementation: { ...caseData.implementation, steps: newSteps } });
                       }}
@@ -290,7 +313,7 @@ export const Editor: React.FC<EditorProps> = ({
                             </label>
                             <button 
                               onClick={() => {
-                                const newSteps = [...caseData.implementation.steps];
+                                const newSteps = [...(caseData.implementation?.steps ?? [])];
                                 newSteps[index].imageUrl = '';
                                 setCaseData({ ...caseData, implementation: { ...caseData.implementation, steps: newSteps } });
                               }}
@@ -338,7 +361,7 @@ export const Editor: React.FC<EditorProps> = ({
             </button>
           </div>
           <div className="grid grid-cols-2 gap-6">
-            {caseData.businessValue.metrics.map((metric, index) => (
+            {(caseData.businessValue?.metrics ?? []).map((metric, index) => (
               <motion.div 
                 key={metric.id}
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -351,7 +374,7 @@ export const Editor: React.FC<EditorProps> = ({
                       <button
                         key={iconName}
                         onClick={() => {
-                          const newMetrics = [...caseData.businessValue.metrics];
+                          const newMetrics = [...(caseData.businessValue?.metrics ?? [])];
                           newMetrics[index].icon = iconName as any;
                           setCaseData({ ...caseData, businessValue: { ...caseData.businessValue, metrics: newMetrics } });
                         }}
@@ -376,7 +399,7 @@ export const Editor: React.FC<EditorProps> = ({
                     type="text" 
                     value={metric.label}
                     onChange={(e) => {
-                      const newMetrics = [...caseData.businessValue.metrics];
+                      const newMetrics = [...(caseData.businessValue?.metrics ?? [])];
                       newMetrics[index].label = e.target.value;
                       setCaseData({ ...caseData, businessValue: { ...caseData.businessValue, metrics: newMetrics } });
                     }}
@@ -387,7 +410,7 @@ export const Editor: React.FC<EditorProps> = ({
                     type="text" 
                     value={metric.value}
                     onChange={(e) => {
-                      const newMetrics = [...caseData.businessValue.metrics];
+                      const newMetrics = [...(caseData.businessValue?.metrics ?? [])];
                       newMetrics[index].value = e.target.value;
                       setCaseData({ ...caseData, businessValue: { ...caseData.businessValue, metrics: newMetrics } });
                     }}
@@ -398,7 +421,7 @@ export const Editor: React.FC<EditorProps> = ({
                     type="text" 
                     value={metric.subtext}
                     onChange={(e) => {
-                      const newMetrics = [...caseData.businessValue.metrics];
+                      const newMetrics = [...(caseData.businessValue?.metrics ?? [])];
                       newMetrics[index].subtext = e.target.value;
                       setCaseData({ ...caseData, businessValue: { ...caseData.businessValue, metrics: newMetrics } });
                     }}
@@ -428,7 +451,7 @@ export const Editor: React.FC<EditorProps> = ({
             </button>
           </div>
           <div className="space-y-3">
-            {caseData.roadmap.items.map((item, index) => (
+            {(caseData.roadmap?.items ?? []).map((item, index) => (
               <motion.div 
                 key={item.id}
                 initial={{ opacity: 0, y: 10 }}
@@ -439,7 +462,7 @@ export const Editor: React.FC<EditorProps> = ({
                   type="text" 
                   value={item.task}
                   onChange={(e) => {
-                    const newItems = [...caseData.roadmap.items];
+                    const newItems = [...(caseData.roadmap?.items ?? [])];
                     newItems[index].task = e.target.value;
                     setCaseData({ ...caseData, roadmap: { ...caseData.roadmap, items: newItems } });
                   }}
@@ -450,7 +473,7 @@ export const Editor: React.FC<EditorProps> = ({
                   type="text" 
                   value={item.content}
                   onChange={(e) => {
-                    const newItems = [...caseData.roadmap.items];
+                    const newItems = [...(caseData.roadmap?.items ?? [])];
                     newItems[index].content = e.target.value;
                     setCaseData({ ...caseData, roadmap: { ...caseData.roadmap, items: newItems } });
                   }}
@@ -461,7 +484,7 @@ export const Editor: React.FC<EditorProps> = ({
                   type="text" 
                   value={item.date}
                   onChange={(e) => {
-                    const newItems = [...caseData.roadmap.items];
+                    const newItems = [...(caseData.roadmap?.items ?? [])];
                     newItems[index].date = e.target.value;
                     setCaseData({ ...caseData, roadmap: { ...caseData.roadmap, items: newItems } });
                   }}

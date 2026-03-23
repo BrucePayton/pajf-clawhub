@@ -27,35 +27,36 @@ export interface Case {
   title: string;
   subtitle: string;
   status: 'draft' | 'published';
-  version: number;
-  lastModified: number;
+  version?: number;
+  lastModified?: number;
   author: string;
   umNumber: string;
   team: string;
   organization: Organization;
   ownerId?: string;
-  
-  // Section 01: Challenges
-  challenges: {
-    background: string;
-    painPoints: string[];
-    objectives: string;
+  isPublic?: boolean;
+
+  // Section 01: Challenges - 可选字段，提供 null 安全性
+  challenges?: {
+    background?: string;
+    painPoints?: string[];
+    objectives?: string;
   };
 
-  // Section 02: Implementation
-  implementation: {
-    steps: CaseStep[];
+  // Section 02: Implementation - 可选字段，提供 null 安全性
+  implementation?: {
+    steps?: CaseStep[];
   };
 
-  // Section 03: Business Value
-  businessValue: {
-    metrics: MetricCard[];
-    footerNote: string;
+  // Section 03: Business Value - 可选字段，提供 null 安全性
+  businessValue?: {
+    metrics?: MetricCard[];
+    footerNote?: string;
   };
 
-  // Section 04: Future Roadmap
-  roadmap: {
-    items: RoadmapItem[];
+  // Section 04: Future Roadmap - 可选字段，提供 null 安全性
+  roadmap?: {
+    items?: RoadmapItem[];
   };
 }
 

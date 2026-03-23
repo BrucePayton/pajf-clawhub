@@ -38,6 +38,7 @@ import { DbConfigModal } from './components/DbConfigModal';
 import { Dashboard } from './components/Dashboard';
 import { Editor } from './components/Editor';
 import { CanvasView } from './components/CanvasView';
+import { UserManagementModal } from './components/UserManagementModal';
 import metadata from '../metadata.json';
 
 // Helper to generate IDs safely in non-secure contexts (HTTP/IP)
@@ -194,6 +195,7 @@ export default function App() {
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showDbConfig, setShowDbConfig] = useState(false);
+  const [showUserManagement, setShowUserManagement] = useState(false);
   const [dbConfig, setDbConfig] = useState<DbConfig>({
     host: 'localhost',
     port: 3306,
@@ -218,25 +220,46 @@ export default function App() {
   }, []);
 
   // Load from API with Real-time Sync
+  const [lastLoadedTime, setLastLoadedTime] = useState(0);
+
   useEffect(() => {
     if (!isAuthReady) return;
 
+    // Load cases based on user authentication status
+    const loadCases = () => {
+      const savedUser = localStorage.getItem('internal_user');
+      const userId = savedUser ? JSON.parse(savedUser).uid : undefined;
+
+      apiService.getCases(userId).then(data => {
+        if (data.length === 0) {
+          setCases(INITIAL_CASES);
+        } else {
+          setCases(data);
+        }
+        setLastLoadedTime(Date.now());
+      });
+    };
+
     // Initial load
-    apiService.getCases().then(data => {
-      if (data.length === 0) {
-        setCases(INITIAL_CASES);
-      } else {
-        setCases(data);
-      }
-    });
+    loadCases();
 
     // Listen for updates from other users
     const unsubscribe = apiService.onCasesUpdated((updatedCases) => {
-      setCases(updatedCases);
+      // Prevent immediate re-trigger after initial load
+      if (Date.now() - lastLoadedTime < 1000) return;
+
+      // Only update if user is still logged in
+      const savedUser = localStorage.getItem('internal_user');
+      const userId = savedUser ? JSON.parse(savedUser).uid : undefined;
+
+      // Re-fetch cases with current user context
+      apiService.getCases(userId).then(data => {
+        setCases(data);
+      });
     });
 
     return () => unsubscribe();
-  }, [isAuthReady]);
+  }, [isAuthReady, lastLoadedTime]);
 
   // Load DB Config
   useEffect(() => {
@@ -299,10 +322,10 @@ export default function App() {
       return;
     }
     
-    const updatedCase = { 
-      ...currentCase, 
+    const updatedCase = {
+      ...currentCase,
       lastModified: Date.now(),
-      ownerId: currentCase.ownerId || user.uid 
+      ownerId: currentCase?.ownerId || user.uid
     };
 
     console.log('Saving case:', updatedCase);
@@ -323,25 +346,26 @@ export default function App() {
       showToast('请先登录以发布案例', 'error');
       return;
     }
-    
-    const nextVersion = currentCase.status === 'published' 
-      ? Math.round((currentCase.version + 0.1) * 10) / 10 
+
+    const nextVersion = currentCase?.status === 'published'
+      ? Math.round(((currentCase?.version ?? 0) + 0.1) * 10) / 10
       : 1.0;
 
-    const publishedCase = { 
-      ...currentCase, 
+    const publishedCase = {
+      ...currentCase,
       status: 'published' as const,
       version: nextVersion,
       lastModified: Date.now(),
-      ownerId: currentCase.ownerId || user.uid
+      ownerId: currentCase?.ownerId || user.uid,
+      isPublic: currentCase.isPublic ?? false  // 使用 null 合并运算符，保持用户设置的状态
     };
-    
+
     console.log('Publishing case:', publishedCase);
     const success = await apiService.saveCase(publishedCase);
     if (success) {
       setCurrentCase(publishedCase);
       setActiveView('canvas');
-      showToast('发布成功！版本已更新');
+      showToast(publishedCase.isPublic ? '发布成功！案例已公开' : '发布成功！案例已保存为私密');
     } else {
       showToast('发布失败，请检查网络或数据库连接', 'error');
     }
@@ -354,15 +378,36 @@ export default function App() {
       localStorage.setItem('internal_user', JSON.stringify(loggedInUser));
       setShowLoginModal(false);
       showToast('登录成功');
+
+      // Reload cases with new user context after a short delay
+      setTimeout(() => {
+        const userId = loggedInUser.uid;
+        apiService.getCases(userId).then(data => {
+          if (data.length === 0) {
+            setCases(INITIAL_CASES);
+          } else {
+            setCases(data);
+          }
+        });
+      }, 500);
     } else {
       showToast('用户名或密码错误', 'error');
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setUser(null);
     localStorage.removeItem('internal_user');
     showToast('已退出登录');
+
+    // 立即刷新案例列表（仅公开案例）
+    try {
+      const data = await apiService.getCases(undefined);
+      setCases(data.length === 0 ? INITIAL_CASES : data);
+    } catch (err) {
+      console.error('Failed to reload cases after logout:', err);
+      setCases(INITIAL_CASES);
+    }
   };
 
   const handleSaveDbConfig = async (config: DbConfig) => {
@@ -405,7 +450,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-neutral-50 font-sans text-neutral-900">
       {activeView === 'dashboard' && (
-        <Dashboard 
+        <Dashboard
           cases={cases}
           user={user}
           appName={metadata.name}
@@ -425,6 +470,7 @@ export default function App() {
           onLogin={() => setShowLoginModal(true)}
           onLogout={handleLogout}
           onOpenDbConfig={() => setShowDbConfig(true)}
+          onOpenUserManagement={() => setShowUserManagement(true)}
         />
       )}
 
@@ -475,13 +521,20 @@ export default function App() {
         )}
 
         {showDbConfig && (
-          <DbConfigModal 
+          <DbConfigModal
             isOpen={showDbConfig}
             onClose={() => setShowDbConfig(false)}
             config={dbConfig}
             onSave={handleSaveDbConfig}
             onReset={handleResetDbConfig}
             onTest={handleTestDbConfig}
+          />
+        )}
+
+        {showUserManagement && (
+          <UserManagementModal
+            isOpen={showUserManagement}
+            onClose={() => setShowUserManagement(false)}
           />
         )}
       </AnimatePresence>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Plus, Search, Filter, Database, LogOut, Trash2, Edit3, Eye, FileText, CheckCircle, Clock, Upload } from 'lucide-react';
+import { Plus, Search, Filter, Database, LogOut, Trash2, Edit3, Eye, FileText, CheckCircle, Clock, Upload, Users } from 'lucide-react';
 import { Case } from '../types';
 import { User } from '../services/apiService';
 
@@ -18,6 +18,7 @@ interface DashboardProps {
   onLogin: () => void;
   onLogout: () => void;
   onOpenDbConfig: () => void;
+  onOpenUserManagement: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -33,7 +34,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onDeleteCase,
   onLogin,
   onLogout,
-  onOpenDbConfig
+  onOpenDbConfig,
+  onOpenUserManagement
 }) => {
   const filteredCases = cases.filter(c => 
     c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -54,13 +56,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button 
+            <button
               onClick={onOpenDbConfig}
               className="p-3 bg-white text-neutral-400 rounded-xl hover:text-brand-500 hover:shadow-sm transition-all border border-neutral-200"
               title="数据库配置"
             >
               <Database className="w-5 h-5" />
             </button>
+            {user?.role === 'admin' && (
+              <button
+                onClick={onOpenUserManagement}
+                className="p-3 bg-white text-neutral-400 rounded-xl hover:text-brand-500 hover:shadow-sm transition-all border border-neutral-200"
+                title="用户管理"
+              >
+                <Users className="w-5 h-5" />
+              </button>
+            )}
             {user ? (
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-3 px-3 py-1.5 bg-white border border-neutral-200 rounded-2xl shadow-sm">
@@ -180,7 +191,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         </div>
                         <div>
                           <p className="font-bold text-neutral-900 text-sm group-hover:text-brand-600 transition-colors">{c.title}</p>
-                          <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest mt-0.5">VERSION {c.version.toFixed(1)}</p>
+                          <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest mt-0.5">VERSION {(c.version ?? 0).toFixed(1)}</p>
                         </div>
                       </div>
                     </td>
@@ -205,7 +216,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       </div>
                     </td>
                     <td className="px-8 py-6 text-xs text-neutral-500 font-bold">
-                      {new Date(c.lastModified).toLocaleDateString()}
+                      {new Date(c.lastModified ?? Date.now()).toLocaleDateString()}
                     </td>
                     <td className="px-8 py-6">
                       <div className="flex items-center justify-end gap-2">

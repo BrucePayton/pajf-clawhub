@@ -1,1 +1,1492 @@
-[]
+[
+  {
+    "id": "a26eae7e-e0b7-4a83-9fbe-8d4f634e6bc9",
+    "title": "平安财服 OpenClaw 应用价值案例",
+    "subtitle": "记录业务优化点滴，沉淀数智化转型价值",
+    "status": "published",
+    "version": 1,
+    "lastModified": 1774250016028,
+    "author": "管理员",
+    "umNumber": "",
+    "team": "",
+    "organization": "财服总部",
+    "challenges": {
+      "background": "业务背景描述：此处描述当前的业务流程或背景，如业务目标、涉及系统等。",
+      "painPoints": [
+        "痛点 1：[……]",
+        "痛点 2：[……]",
+        "痛点 3：[……]"
+      ],
+      "objectives": "优化目标：此处描述通过使用 OpenClaw 期望达到的状态。"
+    },
+    "implementation": {
+      "steps": [
+        {
+          "id": "1",
+          "title": "环境配置/任务创建",
+          "description": "详细描述在该步骤中需要执行的操作。",
+          "imageUrl": ""
+        },
+        {
+          "id": "2",
+          "title": "脚本编写/参数设置",
+          "description": "详细描述该步骤的关键设置或代码片段说明。",
+          "imageUrl": ""
+        },
+        {
+          "id": "3",
+          "title": "任务运行/结果监控",
+          "description": "描述任务如何启动、如何监控状态及获取结果。",
+          "imageUrl": ""
+        }
+      ]
+    },
+    "businessValue": {
+      "metrics": [
+        {
+          "id": "1",
+          "label": "效率提升",
+          "value": "85%",
+          "subtext": "原流程耗时：4 小时 → OpenClaw：36 分钟",
+          "icon": "trending-up"
+        },
+        {
+          "id": "2",
+          "label": "时间节约",
+          "value": "120h",
+          "subtext": "预计每月节约 120 小时，释放人员精力专注于核心业务",
+          "icon": "clock"
+        }
+      ],
+      "footerNote": "注：此效果基于……的预估，将在实际运行后进行验证"
+    },
+    "roadmap": {
+      "items": [
+        {
+          "id": "1",
+          "task": "效果验证",
+          "content": "主要内容：[……]",
+          "date": "2026.04"
+        },
+        {
+          "id": "2",
+          "task": "脚本迭代",
+          "content": "主要内容：[……]",
+          "date": "2026.05"
+        },
+        {
+          "id": "3",
+          "task": "推广复制",
+          "content": "主要内容：[……]",
+          "date": "2026.06"
+        }
+      ]
+    },
+    "ownerId": "admin-id"
+  },
+  {
+    "id": "aa68ac52-fb85-4c31-aca8-b63c6180b59c",
+    "title": "平安财服 OpenClaw 应用价值案例",
+    "subtitle": "记录业务优化点滴，沉淀数智化转型价值",
+    "status": "published",
+    "version": 1,
+    "lastModified": 1774250064334,
+    "author": "管理员",
+    "umNumber": "",
+    "team": "",
+    "organization": "财服总部",
+    "challenges": {
+      "background": "业务背景描述：此处描述当前的业务流程或背景，如业务目标、涉及系统等。",
+      "painPoints": [
+        "痛点 1：[……]",
+        "痛点 2：[……]",
+        "痛点 3：[……]"
+      ],
+      "objectives": "优化目标：此处描述通过使用 OpenClaw 期望达到的状态。"
+    },
+    "implementation": {
+      "steps": [
+        {
+          "id": "1",
+          "title": "环境配置/任务创建",
+          "description": "详细描述在该步骤中需要执行的操作。",
+          "imageUrl": ""
+        },
+        {
+          "id": "2",
+          "title": "脚本编写/参数设置",
+          "description": "详细描述该步骤的关键设置或代码片段说明。",
+          "imageUrl": ""
+        },
+        {
+          "id": "3",
+          "title": "任务运行/结果监控",
+          "description": "描述任务如何启动、如何监控状态及获取结果。",
+          "imageUrl": ""
+        }
+      ]
+    },
+    "businessValue": {
+      "metrics": [
+        {
+          "id": "1",
+          "label": "效率提升",
+          "value": "85%",
+          "subtext": "原流程耗时：4 小时 → OpenClaw：36 分钟",
+          "icon": "trending-up"
+        },
+        {
+          "id": "2",
+          "label": "时间节约",
+          "value": "120h",
+          "subtext": "预计每月节约 120 小时，释放人员精力专注于核心业务",
+          "icon": "clock"
+        }
+      ],
+      "footerNote": "注：此效果基于……的预估，将在实际运行后进行验证"
+    },
+    "roadmap": {
+      "items": [
+        {
+          "id": "1",
+          "task": "效果验证",
+          "content": "主要内容：[……]",
+          "date": "2026.04"
+        },
+        {
+          "id": "2",
+          "task": "脚本迭代",
+          "content": "主要内容：[……]",
+          "date": "2026.05"
+        },
+        {
+          "id": "3",
+          "task": "推广复制",
+          "content": "主要内容：[……]",
+          "date": "2026.06"
+        }
+      ]
+    },
+    "ownerId": "admin-id"
+  },
+  {
+    "id": "e801c0b5-7ec0-4de8-8e4a-a02dd51c0c86",
+    "title": "平安财服 OpenClaw 应用价值案例sdasadasd",
+    "subtitle": "记录业务优化点滴，沉淀数智化转型价值",
+    "status": "published",
+    "version": 1,
+    "lastModified": 1774250661793,
+    "author": "管理员",
+    "umNumber": "",
+    "team": "",
+    "organization": "财服总部",
+    "challenges": {
+      "background": "业务背景描述：此处描述当前的业务流程或背景，如业务目标、涉及系统等。",
+      "painPoints": [
+        "痛点 1：[……]",
+        "痛点 2：[……]",
+        "痛点 3：[……]"
+      ],
+      "objectives": "优化目标：此处描述通过使用 OpenClaw 期望达到的状态。"
+    },
+    "implementation": {
+      "steps": [
+        {
+          "id": "1",
+          "title": "环境配置/任务创建",
+          "description": "详细描述在该步骤中需要执行的操作。",
+          "imageUrl": ""
+        },
+        {
+          "id": "2",
+          "title": "脚本编写/参数设置",
+          "description": "详细描述该步骤的关键设置或代码片段说明。",
+          "imageUrl": ""
+        },
+        {
+          "id": "3",
+          "title": "任务运行/结果监控",
+          "description": "描述任务如何启动、如何监控状态及获取结果。",
+          "imageUrl": ""
+        }
+      ]
+    },
+    "businessValue": {
+      "metrics": [
+        {
+          "id": "1",
+          "label": "效率提升",
+          "value": "85%",
+          "subtext": "原流程耗时：4 小时 → OpenClaw：36 分钟",
+          "icon": "trending-up"
+        },
+        {
+          "id": "2",
+          "label": "时间节约",
+          "value": "120h",
+          "subtext": "预计每月节约 120 小时，释放人员精力专注于核心业务",
+          "icon": "clock"
+        }
+      ],
+      "footerNote": "注：此效果基于……的预估，将在实际运行后进行验证"
+    },
+    "roadmap": {
+      "items": [
+        {
+          "id": "1",
+          "task": "效果验证",
+          "content": "主要内容：[……]",
+          "date": "2026.04"
+        },
+        {
+          "id": "2",
+          "task": "脚本迭代",
+          "content": "主要内容：[……]",
+          "date": "2026.05"
+        },
+        {
+          "id": "3",
+          "task": "推广复制",
+          "content": "主要内容：[……]",
+          "date": "2026.06"
+        }
+      ]
+    },
+    "ownerId": "admin-id",
+    "isPublic": true
+  },
+  {
+    "id": "1cbfae5e-29d6-4d04-b2e5-d97494567d99",
+    "title": "平安财服 OpenClaw 应用价值案例-私密",
+    "subtitle": "记录业务优化点滴，沉淀数智化转型价值",
+    "status": "published",
+    "version": 1,
+    "lastModified": 1774250674511,
+    "author": "管理员",
+    "umNumber": "",
+    "team": "",
+    "organization": "财服总部",
+    "challenges": {
+      "background": "业务背景描述：此处描述当前的业务流程或背景，如业务目标、涉及系统等。",
+      "painPoints": [
+        "痛点 1：[……]",
+        "痛点 2：[……]",
+        "痛点 3：[……]"
+      ],
+      "objectives": "优化目标：此处描述通过使用 OpenClaw 期望达到的状态。"
+    },
+    "implementation": {
+      "steps": [
+        {
+          "id": "1",
+          "title": "环境配置/任务创建",
+          "description": "详细描述在该步骤中需要执行的操作。",
+          "imageUrl": ""
+        },
+        {
+          "id": "2",
+          "title": "脚本编写/参数设置",
+          "description": "详细描述该步骤的关键设置或代码片段说明。",
+          "imageUrl": ""
+        },
+        {
+          "id": "3",
+          "title": "任务运行/结果监控",
+          "description": "描述任务如何启动、如何监控状态及获取结果。",
+          "imageUrl": ""
+        }
+      ]
+    },
+    "businessValue": {
+      "metrics": [
+        {
+          "id": "1",
+          "label": "效率提升",
+          "value": "85%",
+          "subtext": "原流程耗时：4 小时 → OpenClaw：36 分钟",
+          "icon": "trending-up"
+        },
+        {
+          "id": "2",
+          "label": "时间节约",
+          "value": "120h",
+          "subtext": "预计每月节约 120 小时，释放人员精力专注于核心业务",
+          "icon": "clock"
+        }
+      ],
+      "footerNote": "注：此效果基于……的预估，将在实际运行后进行验证"
+    },
+    "roadmap": {
+      "items": [
+        {
+          "id": "1",
+          "task": "效果验证",
+          "content": "主要内容：[……]",
+          "date": "2026.04"
+        },
+        {
+          "id": "2",
+          "task": "脚本迭代",
+          "content": "主要内容：[……]",
+          "date": "2026.05"
+        },
+        {
+          "id": "3",
+          "task": "推广复制",
+          "content": "主要内容：[……]",
+          "date": "2026.06"
+        }
+      ]
+    },
+    "ownerId": "admin-id"
+  },
+  {
+    "id": "004e2280-3bd1-486d-8d6e-c91aa196ba07",
+    "title": "平安财服 OpenClaw 应用价值案例",
+    "subtitle": "记录业务优化点滴，沉淀数智化转型价值",
+    "status": "published",
+    "version": 1,
+    "lastModified": 1774253992521,
+    "author": "admin",
+    "umNumber": "",
+    "team": "",
+    "organization": "财服总部",
+    "challenges": {
+      "background": "业务背景描述：此处描述当前的业务流程或背景，如业务目标、涉及系统等。",
+      "painPoints": [
+        "痛点 1：[……]",
+        "痛点 2：[……]",
+        "痛点 3：[……]"
+      ],
+      "objectives": "优化目标：此处描述通过使用 OpenClaw 期望达到的状态。"
+    },
+    "implementation": {
+      "steps": [
+        {
+          "id": "1",
+          "title": "环境配置/任务创建",
+          "description": "详细描述在该步骤中需要执行的操作。",
+          "imageUrl": ""
+        },
+        {
+          "id": "2",
+          "title": "脚本编写/参数设置",
+          "description": "详细描述该步骤的关键设置或代码片段说明。",
+          "imageUrl": ""
+        },
+        {
+          "id": "3",
+          "title": "任务运行/结果监控",
+          "description": "描述任务如何启动、如何监控状态及获取结果。",
+          "imageUrl": ""
+        }
+      ]
+    },
+    "businessValue": {
+      "metrics": [
+        {
+          "id": "1",
+          "label": "效率提升",
+          "value": "85%",
+          "subtext": "原流程耗时：4 小时 → OpenClaw：36 分钟",
+          "icon": "trending-up"
+        },
+        {
+          "id": "2",
+          "label": "时间节约",
+          "value": "120h",
+          "subtext": "预计每月节约 120 小时，释放人员精力专注于核心业务",
+          "icon": "clock"
+        }
+      ],
+      "footerNote": "注：此效果基于……的预估，将在实际运行后进行验证"
+    },
+    "roadmap": {
+      "items": [
+        {
+          "id": "1",
+          "task": "效果验证",
+          "content": "主要内容：[……]",
+          "date": "2026.04"
+        },
+        {
+          "id": "2",
+          "task": "脚本迭代",
+          "content": "主要内容：[……]",
+          "date": "2026.05"
+        },
+        {
+          "id": "3",
+          "task": "推广复制",
+          "content": "主要内容：[……]",
+          "date": "2026.06"
+        }
+      ]
+    },
+    "ownerId": "admin-1"
+  },
+  {
+    "id": "1d83213e-14f4-485d-855d-b7c9a97d5cec",
+    "title": "平安财服 OpenClaw 应用价值案例",
+    "subtitle": "记录业务优化点滴，沉淀数智化转型价值",
+    "status": "published",
+    "version": 1,
+    "lastModified": 1774253999579,
+    "author": "admin",
+    "umNumber": "",
+    "team": "",
+    "organization": "财服总部",
+    "challenges": {
+      "background": "业务背景描述：此处描述当前的业务流程或背景，如业务目标、涉及系统等。",
+      "painPoints": [
+        "痛点 1：[……]",
+        "痛点 2：[……]",
+        "痛点 3：[……]"
+      ],
+      "objectives": "优化目标：此处描述通过使用 OpenClaw 期望达到的状态。"
+    },
+    "implementation": {
+      "steps": [
+        {
+          "id": "1",
+          "title": "环境配置/任务创建",
+          "description": "详细描述在该步骤中需要执行的操作。",
+          "imageUrl": ""
+        },
+        {
+          "id": "2",
+          "title": "脚本编写/参数设置",
+          "description": "详细描述该步骤的关键设置或代码片段说明。",
+          "imageUrl": ""
+        },
+        {
+          "id": "3",
+          "title": "任务运行/结果监控",
+          "description": "描述任务如何启动、如何监控状态及获取结果。",
+          "imageUrl": ""
+        }
+      ]
+    },
+    "businessValue": {
+      "metrics": [
+        {
+          "id": "1",
+          "label": "效率提升",
+          "value": "85%",
+          "subtext": "原流程耗时：4 小时 → OpenClaw：36 分钟",
+          "icon": "trending-up"
+        },
+        {
+          "id": "2",
+          "label": "时间节约",
+          "value": "120h",
+          "subtext": "预计每月节约 120 小时，释放人员精力专注于核心业务",
+          "icon": "clock"
+        }
+      ],
+      "footerNote": "注：此效果基于……的预估，将在实际运行后进行验证"
+    },
+    "roadmap": {
+      "items": [
+        {
+          "id": "1",
+          "task": "效果验证",
+          "content": "主要内容：[……]",
+          "date": "2026.04"
+        },
+        {
+          "id": "2",
+          "task": "脚本迭代",
+          "content": "主要内容：[……]",
+          "date": "2026.05"
+        },
+        {
+          "id": "3",
+          "task": "推广复制",
+          "content": "主要内容：[……]",
+          "date": "2026.06"
+        }
+      ]
+    },
+    "ownerId": "admin-1"
+  },
+  {
+    "id": "b19097e2-796c-4e14-aa3c-d7e9fd41bc2b",
+    "title": "平安财服 OpenClaw 应用价值案例",
+    "subtitle": "记录业务优化点滴，沉淀数智化转型价值",
+    "status": "published",
+    "version": 1,
+    "lastModified": 1774254009708,
+    "author": "admin",
+    "umNumber": "",
+    "team": "",
+    "organization": "财服总部",
+    "challenges": {
+      "background": "业务背景描述：此处描述当前的业务流程或背景，如业务目标、涉及系统等。",
+      "painPoints": [
+        "痛点 1：[……]",
+        "痛点 2：[……]",
+        "痛点 3：[……]"
+      ],
+      "objectives": "优化目标：此处描述通过使用 OpenClaw 期望达到的状态。"
+    },
+    "implementation": {
+      "steps": [
+        {
+          "id": "1",
+          "title": "环境配置/任务创建",
+          "description": "详细描述在该步骤中需要执行的操作。",
+          "imageUrl": ""
+        },
+        {
+          "id": "2",
+          "title": "脚本编写/参数设置",
+          "description": "详细描述该步骤的关键设置或代码片段说明。",
+          "imageUrl": ""
+        },
+        {
+          "id": "3",
+          "title": "任务运行/结果监控",
+          "description": "描述任务如何启动、如何监控状态及获取结果。",
+          "imageUrl": ""
+        }
+      ]
+    },
+    "businessValue": {
+      "metrics": [
+        {
+          "id": "1",
+          "label": "效率提升",
+          "value": "85%",
+          "subtext": "原流程耗时：4 小时 → OpenClaw：36 分钟",
+          "icon": "trending-up"
+        },
+        {
+          "id": "2",
+          "label": "时间节约",
+          "value": "120h",
+          "subtext": "预计每月节约 120 小时，释放人员精力专注于核心业务",
+          "icon": "clock"
+        }
+      ],
+      "footerNote": "注：此效果基于……的预估，将在实际运行后进行验证"
+    },
+    "roadmap": {
+      "items": [
+        {
+          "id": "1",
+          "task": "效果验证",
+          "content": "主要内容：[……]",
+          "date": "2026.04"
+        },
+        {
+          "id": "2",
+          "task": "脚本迭代",
+          "content": "主要内容：[……]",
+          "date": "2026.05"
+        },
+        {
+          "id": "3",
+          "task": "推广复制",
+          "content": "主要内容：[……]",
+          "date": "2026.06"
+        }
+      ]
+    },
+    "ownerId": "admin-1"
+  },
+  {
+    "id": "test-new-case",
+    "title": "测试案例",
+    "version": 0.1,
+    "status": "draft",
+    "isPublic": false,
+    "ownerId": "admin-1"
+  },
+  {
+    "id": "test-create-123",
+    "title": "测试新增案例",
+    "subtitle": "测试",
+    "status": "draft",
+    "version": 0.1,
+    "lastModified": 1234567890,
+    "author": "测试用户",
+    "umNumber": "UM001",
+    "team": "测试团队",
+    "organization": "测试组织",
+    "isPublic": false,
+    "ownerId": "admin-1",
+    "challenges": {
+      "background": "测试背景",
+      "painPoints": [
+        "测试"
+      ]
+    },
+    "implementation": {
+      "steps": []
+    },
+    "businessValue": {
+      "metrics": []
+    },
+    "roadmap": {
+      "items": []
+    }
+  },
+  {
+    "id": "ec790eea-9922-40fa-866a-fcc4de3ea1e3",
+    "title": "平安财服 OpenClaw 应用价值案例",
+    "subtitle": "记录业务优化点滴，沉淀数智化转型价值",
+    "status": "published",
+    "version": 1,
+    "lastModified": 1774254430775,
+    "author": "zhengpei",
+    "umNumber": "",
+    "team": "",
+    "organization": "财服总部",
+    "challenges": {
+      "background": "业务背景描述：此处描述当前的业务流程或背景，如业务目标、涉及系统等。",
+      "painPoints": [
+        "痛点 1：[……]",
+        "痛点 2：[……]",
+        "痛点 3：[……]"
+      ],
+      "objectives": "优化目标：此处描述通过使用 OpenClaw 期望达到的状态。"
+    },
+    "implementation": {
+      "steps": [
+        {
+          "id": "1",
+          "title": "环境配置/任务创建",
+          "description": "详细描述在该步骤中需要执行的操作。",
+          "imageUrl": ""
+        },
+        {
+          "id": "2",
+          "title": "脚本编写/参数设置",
+          "description": "详细描述该步骤的关键设置或代码片段说明。",
+          "imageUrl": ""
+        },
+        {
+          "id": "3",
+          "title": "任务运行/结果监控",
+          "description": "描述任务如何启动、如何监控状态及获取结果。",
+          "imageUrl": ""
+        }
+      ]
+    },
+    "businessValue": {
+      "metrics": [
+        {
+          "id": "1",
+          "label": "效率提升",
+          "value": "85%",
+          "subtext": "原流程耗时：4 小时 → OpenClaw：36 分钟",
+          "icon": "trending-up"
+        },
+        {
+          "id": "2",
+          "label": "时间节约",
+          "value": "120h",
+          "subtext": "预计每月节约 120 小时，释放人员精力专注于核心业务",
+          "icon": "clock"
+        }
+      ],
+      "footerNote": "注：此效果基于……的预估，将在实际运行后进行验证"
+    },
+    "roadmap": {
+      "items": [
+        {
+          "id": "1",
+          "task": "效果验证",
+          "content": "主要内容：[……]",
+          "date": "2026.04"
+        },
+        {
+          "id": "2",
+          "task": "脚本迭代",
+          "content": "主要内容：[……]",
+          "date": "2026.05"
+        },
+        {
+          "id": "3",
+          "task": "推广复制",
+          "content": "主要内容：[……]",
+          "date": "2026.06"
+        }
+      ]
+    },
+    "ownerId": "user-1774253987230-2empq9r"
+  },
+  {
+    "id": "2dfbe4f5-f8a0-411b-9408-242237a2c950",
+    "title": "平安财服 OpenClaw 应用价值案例",
+    "subtitle": "记录业务优化点滴，沉淀数智化转型价值",
+    "status": "published",
+    "version": 1,
+    "lastModified": 1774254480031,
+    "author": "zhengpei",
+    "umNumber": "",
+    "team": "",
+    "organization": "财服总部",
+    "challenges": {
+      "background": "业务背景描述：此处描述当前的业务流程或背景，如业务目标、涉及系统等。",
+      "painPoints": [
+        "痛点 1：[……]",
+        "痛点 2：[……]",
+        "痛点 3：[……]"
+      ],
+      "objectives": "优化目标：此处描述通过使用 OpenClaw 期望达到的状态。"
+    },
+    "implementation": {
+      "steps": [
+        {
+          "id": "1",
+          "title": "环境配置/任务创建",
+          "description": "详细描述在该步骤中需要执行的操作。",
+          "imageUrl": ""
+        },
+        {
+          "id": "2",
+          "title": "脚本编写/参数设置",
+          "description": "详细描述该步骤的关键设置或代码片段说明。",
+          "imageUrl": ""
+        },
+        {
+          "id": "3",
+          "title": "任务运行/结果监控",
+          "description": "描述任务如何启动、如何监控状态及获取结果。",
+          "imageUrl": ""
+        }
+      ]
+    },
+    "businessValue": {
+      "metrics": [
+        {
+          "id": "1",
+          "label": "效率提升",
+          "value": "85%",
+          "subtext": "原流程耗时：4 小时 → OpenClaw：36 分钟",
+          "icon": "trending-up"
+        },
+        {
+          "id": "2",
+          "label": "时间节约",
+          "value": "120h",
+          "subtext": "预计每月节约 120 小时，释放人员精力专注于核心业务",
+          "icon": "clock"
+        }
+      ],
+      "footerNote": "注：此效果基于……的预估，将在实际运行后进行验证"
+    },
+    "roadmap": {
+      "items": [
+        {
+          "id": "1",
+          "task": "效果验证",
+          "content": "主要内容：[……]",
+          "date": "2026.04"
+        },
+        {
+          "id": "2",
+          "task": "脚本迭代",
+          "content": "主要内容：[……]",
+          "date": "2026.05"
+        },
+        {
+          "id": "3",
+          "task": "推广复制",
+          "content": "主要内容：[……]",
+          "date": "2026.06"
+        }
+      ]
+    },
+    "ownerId": "user-1774253987230-2empq9r"
+  },
+  {
+    "id": "66d3927b-31b5-4250-a6bd-8f6e4277b3e4",
+    "title": "平安财服 OpenClaw 应用价值案例-sdahdhads",
+    "subtitle": "记录业务优化点滴，沉淀数智化转型价值",
+    "status": "published",
+    "version": 1,
+    "lastModified": 1774254933295,
+    "author": "zhengpei",
+    "umNumber": "",
+    "team": "",
+    "organization": "财服总部",
+    "challenges": {
+      "background": "业务背景描述：此处描述当前的业务流程或背景，如业务目标、涉及系统等。",
+      "painPoints": [
+        "痛点 1：[……]",
+        "痛点 2：[……]",
+        "痛点 3：[……]"
+      ],
+      "objectives": "优化目标：此处描述通过使用 OpenClaw 期望达到的状态。"
+    },
+    "implementation": {
+      "steps": [
+        {
+          "id": "1",
+          "title": "环境配置/任务创建",
+          "description": "详细描述在该步骤中需要执行的操作。",
+          "imageUrl": ""
+        },
+        {
+          "id": "2",
+          "title": "脚本编写/参数设置",
+          "description": "详细描述该步骤的关键设置或代码片段说明。",
+          "imageUrl": ""
+        },
+        {
+          "id": "3",
+          "title": "任务运行/结果监控",
+          "description": "描述任务如何启动、如何监控状态及获取结果。",
+          "imageUrl": ""
+        }
+      ]
+    },
+    "businessValue": {
+      "metrics": [
+        {
+          "id": "1",
+          "label": "效率提升",
+          "value": "85%",
+          "subtext": "原流程耗时：4 小时 → OpenClaw：36 分钟",
+          "icon": "trending-up"
+        },
+        {
+          "id": "2",
+          "label": "时间节约",
+          "value": "120h",
+          "subtext": "预计每月节约 120 小时，释放人员精力专注于核心业务",
+          "icon": "clock"
+        }
+      ],
+      "footerNote": "注：此效果基于……的预估，将在实际运行后进行验证"
+    },
+    "roadmap": {
+      "items": [
+        {
+          "id": "1",
+          "task": "效果验证",
+          "content": "主要内容：[……]",
+          "date": "2026.04"
+        },
+        {
+          "id": "2",
+          "task": "脚本迭代",
+          "content": "主要内容：[……]",
+          "date": "2026.05"
+        },
+        {
+          "id": "3",
+          "task": "推广复制",
+          "content": "主要内容：[……]",
+          "date": "2026.06"
+        }
+      ]
+    },
+    "ownerId": "user-1774253987230-2empq9r",
+    "isPublic": true
+  },
+  {
+    "id": "bb718cab-65bd-4480-98b1-06c138916951",
+    "title": "平安财服 OpenCl-sdajislajdklasjdkl",
+    "subtitle": "记录业务优化点滴，沉淀数智化转型价值",
+    "status": "published",
+    "version": 1.1,
+    "lastModified": 1774254979227,
+    "author": "zhengpei",
+    "umNumber": "",
+    "team": "",
+    "organization": "财服总部",
+    "challenges": {
+      "background": "业务背景描述：此处描述当前的业务流程或背景，如业务目标、涉及系统等。",
+      "painPoints": [
+        "痛点 1：[……]",
+        "痛点 2：[……]",
+        "痛点 3：[……]"
+      ],
+      "objectives": "优化目标：此处描述通过使用 OpenClaw 期望达到的状态。"
+    },
+    "implementation": {
+      "steps": [
+        {
+          "id": "1",
+          "title": "环境配置/任务创建",
+          "description": "详细描述在该步骤中需要执行的操作。",
+          "imageUrl": ""
+        },
+        {
+          "id": "2",
+          "title": "脚本编写/参数设置",
+          "description": "详细描述该步骤的关键设置或代码片段说明。",
+          "imageUrl": ""
+        },
+        {
+          "id": "3",
+          "title": "任务运行/结果监控",
+          "description": "描述任务如何启动、如何监控状态及获取结果。",
+          "imageUrl": ""
+        }
+      ]
+    },
+    "businessValue": {
+      "metrics": [
+        {
+          "id": "1",
+          "label": "效率提升",
+          "value": "85%",
+          "subtext": "原流程耗时：4 小时 → OpenClaw：36 分钟",
+          "icon": "trending-up"
+        },
+        {
+          "id": "2",
+          "label": "时间节约",
+          "value": "120h",
+          "subtext": "预计每月节约 120 小时，释放人员精力专注于核心业务",
+          "icon": "clock"
+        }
+      ],
+      "footerNote": "注：此效果基于……的预估，将在实际运行后进行验证"
+    },
+    "roadmap": {
+      "items": [
+        {
+          "id": "1",
+          "task": "效果验证",
+          "content": "主要内容：[……]",
+          "date": "2026.04"
+        },
+        {
+          "id": "2",
+          "task": "脚本迭代",
+          "content": "主要内容：[……]",
+          "date": "2026.05"
+        },
+        {
+          "id": "3",
+          "task": "推广复制",
+          "content": "主要内容：[……]",
+          "date": "2026.06"
+        }
+      ]
+    },
+    "ownerId": "user-1774253987230-2empq9r",
+    "isPublic": true
+  },
+  {
+    "id": "8f29e3ae-0eb5-44ba-a4fe-88f0bab6c47c",
+    "title": "djaskdklajdlkas",
+    "subtitle": "记录业务优化点滴，沉淀数智化转型价值",
+    "status": "published",
+    "version": 1.1,
+    "lastModified": 1774255194787,
+    "author": "zhengpei",
+    "umNumber": "",
+    "team": "",
+    "organization": "财服总部",
+    "challenges": {
+      "background": "业务背景描述：此处描述当前的业务流程或背景，如业务目标、涉及系统等。",
+      "painPoints": [
+        "痛点 1：[……]",
+        "痛点 2：[……]",
+        "痛点 3：[……]"
+      ],
+      "objectives": "优化目标：此处描述通过使用 OpenClaw 期望达到的状态。"
+    },
+    "implementation": {
+      "steps": [
+        {
+          "id": "1",
+          "title": "环境配置/任务创建",
+          "description": "详细描述在该步骤中需要执行的操作。",
+          "imageUrl": ""
+        },
+        {
+          "id": "2",
+          "title": "脚本编写/参数设置",
+          "description": "详细描述该步骤的关键设置或代码片段说明。",
+          "imageUrl": ""
+        },
+        {
+          "id": "3",
+          "title": "任务运行/结果监控",
+          "description": "描述任务如何启动、如何监控状态及获取结果。",
+          "imageUrl": ""
+        }
+      ]
+    },
+    "businessValue": {
+      "metrics": [
+        {
+          "id": "1",
+          "label": "效率提升",
+          "value": "85%",
+          "subtext": "原流程耗时：4 小时 → OpenClaw：36 分钟",
+          "icon": "trending-up"
+        },
+        {
+          "id": "2",
+          "label": "时间节约",
+          "value": "120h",
+          "subtext": "预计每月节约 120 小时，释放人员精力专注于核心业务",
+          "icon": "clock"
+        }
+      ],
+      "footerNote": "注：此效果基于……的预估，将在实际运行后进行验证"
+    },
+    "roadmap": {
+      "items": [
+        {
+          "id": "1",
+          "task": "效果验证",
+          "content": "主要内容：[……]",
+          "date": "2026.04"
+        },
+        {
+          "id": "2",
+          "task": "脚本迭代",
+          "content": "主要内容：[……]",
+          "date": "2026.05"
+        },
+        {
+          "id": "3",
+          "task": "推广复制",
+          "content": "主要内容：[……]",
+          "date": "2026.06"
+        }
+      ]
+    },
+    "ownerId": "user-1774253987230-2empq9r",
+    "isPublic": true
+  },
+  {
+    "id": "2109cac6-d95f-48b4-8812-8d9f80a1608f",
+    "title": "平安财服 OpenClaw 应用价值案例sdaasda",
+    "subtitle": "记录业务优化点滴，沉淀数智化转型价值",
+    "status": "published",
+    "version": 1,
+    "lastModified": 1774255351916,
+    "author": "zhengpei",
+    "umNumber": "",
+    "team": "",
+    "organization": "财服总部",
+    "challenges": {
+      "background": "业务背景描述：此处描述当前的业务流程或背景，如业务目标、涉及系统等。",
+      "painPoints": [
+        "痛点 1：[……]",
+        "痛点 2：[……]",
+        "痛点 3：[……]"
+      ],
+      "objectives": "优化目标：此处描述通过使用 OpenClaw 期望达到的状态。"
+    },
+    "implementation": {
+      "steps": [
+        {
+          "id": "1",
+          "title": "环境配置/任务创建",
+          "description": "详细描述在该步骤中需要执行的操作。",
+          "imageUrl": ""
+        },
+        {
+          "id": "2",
+          "title": "脚本编写/参数设置",
+          "description": "详细描述该步骤的关键设置或代码片段说明。",
+          "imageUrl": ""
+        },
+        {
+          "id": "3",
+          "title": "任务运行/结果监控",
+          "description": "描述任务如何启动、如何监控状态及获取结果。",
+          "imageUrl": ""
+        }
+      ]
+    },
+    "businessValue": {
+      "metrics": [
+        {
+          "id": "1",
+          "label": "效率提升",
+          "value": "85%",
+          "subtext": "原流程耗时：4 小时 → OpenClaw：36 分钟",
+          "icon": "trending-up"
+        },
+        {
+          "id": "2",
+          "label": "时间节约",
+          "value": "120h",
+          "subtext": "预计每月节约 120 小时，释放人员精力专注于核心业务",
+          "icon": "clock"
+        }
+      ],
+      "footerNote": "注：此效果基于……的预估，将在实际运行后进行验证"
+    },
+    "roadmap": {
+      "items": [
+        {
+          "id": "1",
+          "task": "效果验证",
+          "content": "主要内容：[……]",
+          "date": "2026.04"
+        },
+        {
+          "id": "2",
+          "task": "脚本迭代",
+          "content": "主要内容：[……]",
+          "date": "2026.05"
+        },
+        {
+          "id": "3",
+          "task": "推广复制",
+          "content": "主要内容：[……]",
+          "date": "2026.06"
+        }
+      ]
+    },
+    "ownerId": "user-1774253987230-2empq9r",
+    "isPublic": true
+  },
+  {
+    "id": "4edb8e28-4653-4bcf-87ac-ac9ab433acc5",
+    "title": "平安财服 OpenClaw 应用价值案例",
+    "subtitle": "记录业务优化点滴，沉淀数智化转型价值",
+    "status": "published",
+    "version": 1,
+    "lastModified": 1774255365519,
+    "author": "zhengpei",
+    "umNumber": "",
+    "team": "",
+    "organization": "财服总部",
+    "challenges": {
+      "background": "业务背景描述：此处描述当前的业务流程或背景，如业务目标、涉及系统等。",
+      "painPoints": [
+        "痛点 1：[……]",
+        "痛点 2：[……]",
+        "痛点 3：[……]"
+      ],
+      "objectives": "优化目标：此处描述通过使用 OpenClaw 期望达到的状态。"
+    },
+    "implementation": {
+      "steps": [
+        {
+          "id": "1",
+          "title": "环境配置/任务创建",
+          "description": "详细描述在该步骤中需要执行的操作。",
+          "imageUrl": ""
+        },
+        {
+          "id": "2",
+          "title": "脚本编写/参数设置",
+          "description": "详细描述该步骤的关键设置或代码片段说明。",
+          "imageUrl": ""
+        },
+        {
+          "id": "3",
+          "title": "任务运行/结果监控",
+          "description": "描述任务如何启动、如何监控状态及获取结果。",
+          "imageUrl": ""
+        }
+      ]
+    },
+    "businessValue": {
+      "metrics": [
+        {
+          "id": "1",
+          "label": "效率提升",
+          "value": "85%",
+          "subtext": "原流程耗时：4 小时 → OpenClaw：36 分钟",
+          "icon": "trending-up"
+        },
+        {
+          "id": "2",
+          "label": "时间节约",
+          "value": "120h",
+          "subtext": "预计每月节约 120 小时，释放人员精力专注于核心业务",
+          "icon": "clock"
+        }
+      ],
+      "footerNote": "注：此效果基于……的预估，将在实际运行后进行验证"
+    },
+    "roadmap": {
+      "items": [
+        {
+          "id": "1",
+          "task": "效果验证",
+          "content": "主要内容：[……]",
+          "date": "2026.04"
+        },
+        {
+          "id": "2",
+          "task": "脚本迭代",
+          "content": "主要内容：[……]",
+          "date": "2026.05"
+        },
+        {
+          "id": "3",
+          "task": "推广复制",
+          "content": "主要内容：[……]",
+          "date": "2026.06"
+        }
+      ]
+    },
+    "ownerId": "user-1774253987230-2empq9r"
+  },
+  {
+    "id": "3346e019-4a59-4a03-8a64-2fcd74f48a5e",
+    "title": "平安财服 OpenClaw 应用价值案例",
+    "subtitle": "记录业务优化点滴，沉淀数智化转型价值",
+    "status": "published",
+    "version": 1,
+    "lastModified": 1774255885467,
+    "author": "zhengpei",
+    "umNumber": "",
+    "team": "",
+    "organization": "财服总部",
+    "challenges": {
+      "background": "业务背景描述：此处描述当前的业务流程或背景，如业务目标、涉及系统等。",
+      "painPoints": [
+        "痛点 1：[……]",
+        "痛点 2：[……]",
+        "痛点 3：[……]"
+      ],
+      "objectives": "优化目标：此处描述通过使用 OpenClaw 期望达到的状态。"
+    },
+    "implementation": {
+      "steps": [
+        {
+          "id": "1",
+          "title": "环境配置/任务创建",
+          "description": "详细描述在该步骤中需要执行的操作。",
+          "imageUrl": ""
+        },
+        {
+          "id": "2",
+          "title": "脚本编写/参数设置",
+          "description": "详细描述该步骤的关键设置或代码片段说明。",
+          "imageUrl": ""
+        },
+        {
+          "id": "3",
+          "title": "任务运行/结果监控",
+          "description": "描述任务如何启动、如何监控状态及获取结果。",
+          "imageUrl": ""
+        }
+      ]
+    },
+    "businessValue": {
+      "metrics": [
+        {
+          "id": "1",
+          "label": "效率提升",
+          "value": "85%",
+          "subtext": "原流程耗时：4 小时 → OpenClaw：36 分钟",
+          "icon": "trending-up"
+        },
+        {
+          "id": "2",
+          "label": "时间节约",
+          "value": "120h",
+          "subtext": "预计每月节约 120 小时，释放人员精力专注于核心业务",
+          "icon": "clock"
+        }
+      ],
+      "footerNote": "注：此效果基于……的预估，将在实际运行后进行验证"
+    },
+    "roadmap": {
+      "items": [
+        {
+          "id": "1",
+          "task": "效果验证",
+          "content": "主要内容：[……]",
+          "date": "2026.04"
+        },
+        {
+          "id": "2",
+          "task": "脚本迭代",
+          "content": "主要内容：[……]",
+          "date": "2026.05"
+        },
+        {
+          "id": "3",
+          "task": "推广复制",
+          "content": "主要内容：[……]",
+          "date": "2026.06"
+        }
+      ]
+    },
+    "ownerId": "user-1774253987230-2empq9r",
+    "isPublic": true
+  },
+  {
+    "id": "41d42f7e-c8af-4345-980c-cc0ff14d1122",
+    "title": "平安财服 OpenClaw 应用价值案例",
+    "subtitle": "记录业务优化点滴，沉淀数智化转型价值",
+    "status": "published",
+    "version": 1,
+    "lastModified": 1774255897362,
+    "author": "zhengpei",
+    "umNumber": "",
+    "team": "",
+    "organization": "财服总部",
+    "challenges": {
+      "background": "业务背景描述：此处描述当前的业务流程或背景，如业务目标、涉及系统等。",
+      "painPoints": [
+        "痛点 1：[……]",
+        "痛点 2：[……]",
+        "痛点 3：[……]"
+      ],
+      "objectives": "优化目标：此处描述通过使用 OpenClaw 期望达到的状态。"
+    },
+    "implementation": {
+      "steps": [
+        {
+          "id": "1",
+          "title": "环境配置/任务创建",
+          "description": "详细描述在该步骤中需要执行的操作。",
+          "imageUrl": ""
+        },
+        {
+          "id": "2",
+          "title": "脚本编写/参数设置",
+          "description": "详细描述该步骤的关键设置或代码片段说明。",
+          "imageUrl": ""
+        },
+        {
+          "id": "3",
+          "title": "任务运行/结果监控",
+          "description": "描述任务如何启动、如何监控状态及获取结果。",
+          "imageUrl": ""
+        }
+      ]
+    },
+    "businessValue": {
+      "metrics": [
+        {
+          "id": "1",
+          "label": "效率提升",
+          "value": "85%",
+          "subtext": "原流程耗时：4 小时 → OpenClaw：36 分钟",
+          "icon": "trending-up"
+        },
+        {
+          "id": "2",
+          "label": "时间节约",
+          "value": "120h",
+          "subtext": "预计每月节约 120 小时，释放人员精力专注于核心业务",
+          "icon": "clock"
+        }
+      ],
+      "footerNote": "注：此效果基于……的预估，将在实际运行后进行验证"
+    },
+    "roadmap": {
+      "items": [
+        {
+          "id": "1",
+          "task": "效果验证",
+          "content": "主要内容：[……]",
+          "date": "2026.04"
+        },
+        {
+          "id": "2",
+          "task": "脚本迭代",
+          "content": "主要内容：[……]",
+          "date": "2026.05"
+        },
+        {
+          "id": "3",
+          "task": "推广复制",
+          "content": "主要内容：[……]",
+          "date": "2026.06"
+        }
+      ]
+    },
+    "ownerId": "user-1774253987230-2empq9r",
+    "isPublic": true
+  },
+  {
+    "id": "36a250ba-fc27-4b3e-aae9-5f14427109c6",
+    "title": "平安财服 OpenClaw 应用价值案例sdaasdas-",
+    "subtitle": "记录业务优化点滴，沉淀数智化转型价值",
+    "status": "published",
+    "version": 1,
+    "lastModified": 1774255910921,
+    "author": "zhengpei",
+    "umNumber": "",
+    "team": "",
+    "organization": "财服总部",
+    "challenges": {
+      "background": "业务背景描述：此处描述当前的业务流程或背景，如业务目标、涉及系统等。",
+      "painPoints": [
+        "痛点 1：[……]",
+        "痛点 2：[……]",
+        "痛点 3：[……]"
+      ],
+      "objectives": "优化目标：此处描述通过使用 OpenClaw 期望达到的状态。"
+    },
+    "implementation": {
+      "steps": [
+        {
+          "id": "1",
+          "title": "环境配置/任务创建",
+          "description": "详细描述在该步骤中需要执行的操作。",
+          "imageUrl": ""
+        },
+        {
+          "id": "2",
+          "title": "脚本编写/参数设置",
+          "description": "详细描述该步骤的关键设置或代码片段说明。",
+          "imageUrl": ""
+        },
+        {
+          "id": "3",
+          "title": "任务运行/结果监控",
+          "description": "描述任务如何启动、如何监控状态及获取结果。",
+          "imageUrl": ""
+        }
+      ]
+    },
+    "businessValue": {
+      "metrics": [
+        {
+          "id": "1",
+          "label": "效率提升",
+          "value": "85%",
+          "subtext": "原流程耗时：4 小时 → OpenClaw：36 分钟",
+          "icon": "trending-up"
+        },
+        {
+          "id": "2",
+          "label": "时间节约",
+          "value": "120h",
+          "subtext": "预计每月节约 120 小时，释放人员精力专注于核心业务",
+          "icon": "clock"
+        }
+      ],
+      "footerNote": "注：此效果基于……的预估，将在实际运行后进行验证"
+    },
+    "roadmap": {
+      "items": [
+        {
+          "id": "1",
+          "task": "效果验证",
+          "content": "主要内容：[……]",
+          "date": "2026.04"
+        },
+        {
+          "id": "2",
+          "task": "脚本迭代",
+          "content": "主要内容：[……]",
+          "date": "2026.05"
+        },
+        {
+          "id": "3",
+          "task": "推广复制",
+          "content": "主要内容：[……]",
+          "date": "2026.06"
+        }
+      ]
+    },
+    "ownerId": "user-1774253987230-2empq9r",
+    "isPublic": true
+  }
+]
