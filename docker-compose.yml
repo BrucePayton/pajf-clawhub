@@ -13,6 +13,8 @@ services:
       - HOST=0.0.0.0
       # 如果有其他环境变量（如 GEMINI_API_KEY, 数据库配置），可以在这里注入
       # - GEMINI_API_KEY=${GEMINI_API_KEY}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./data:/app/data # 持久化挂载 JSON 数据目录
     restart: always

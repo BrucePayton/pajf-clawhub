@@ -1,4 +1,4 @@
-# 使用 Node 23 环境支持原生 TypeScript 运行特性，如果您的服务器拉取镜像慢，可以尝试切换镜像源
+# 使用 Node 20 环境并利用 tsx 运行 TS
 FROM node:20-alpine
 
 # 设置工作目录
@@ -21,5 +21,5 @@ COPY data/ ./data/
 # 暴露端口
 EXPOSE 3010
 
-# 启动 Node 核心服务
-CMD ["node", "--experimental-strip-types", "server.ts"]
+# 启动 Node 核心服务 (为了兼容非 Node 23 版本，回退到 tsx)
+CMD ["npx", "tsx", "server.ts"]
