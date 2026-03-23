@@ -1,5 +1,5 @@
-# 使用 Node 23 环境支持原生 TypeScript 运行特性
-FROM node:1.23.3-alpine
+# 使用 Node 23 环境支持原生 TypeScript 运行特性，如果您的服务器拉取镜像慢，可以尝试切换镜像源
+FROM node:20-alpine
 
 # 设置工作目录
 WORKDIR /app
@@ -7,8 +7,8 @@ WORKDIR /app
 # 拷贝环境定义和依赖清单
 COPY package.json package-lock.json* ./
 
-# 安装生产依赖
-RUN npm ci --omit=dev || npm install --production
+# 设置 npm 镜像源加速安装依赖（如不需要可删除）
+RUN npm config set registry https://registry.npmmirror.com && npm ci --omit=dev || npm install --production
 
 # 拷贝核心服务器源码
 COPY server.ts ./
