@@ -1,7 +1,7 @@
 {
-  "host": "localhost",
+  "host": "mysql-server",
   "port": 3306,
   "user": "root",
-  "password": "#ZPL91823zpl",
+  "password": "123456",
   "database": "OpenclawAppPlatform"
 }

@@ -17,6 +17,8 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - ./data:/app/data # 持久化挂载 JSON 数据目录
+    depends_on:
+      - mysql-server
     restart: always
     networks:
       - openclaw-net
@@ -32,6 +34,22 @@ services:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - api # 确保后端先启动
+    restart: always
+    networks:
+      - openclaw-net
+
+  # MySQL 数据库服务
+  mysql-server:
+    image: mysql:latest
+    container_name: mysql-server
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=123456
+      - MYSQL_DATABASE=OpenclawAppPlatform
+    volumes:
+      - ./mysql_data:/var/lib/mysql # 将数据持久化到项目目录的 mysql_data 文件夹
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro # 将初始化 SQL 文件挂载进去，容器首次启动时会自动执行
     restart: always
     networks:
       - openclaw-net
