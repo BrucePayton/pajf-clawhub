@@ -1,0 +1,108 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: cases
+    // Document ID: [caseId]
+    // Fields:
+    //   - id: string (required)
+    //   - title: string (required, size < 200)
+    //   - subtitle: string (optional, size < 500)
+    //   - status: string (required, ['draft', 'published'])
+    //   - version: number (required)
+    //   - lastModified: number (required)
+    //   - author: string (optional, size < 100)
+    //   - team: string (optional, size < 100)
+    //   - organization: string (optional, size < 100)
+    //   - challenges: map (background, painPoints: list, objectives)
+    //   - implementation: map (steps: list)
+    //   - businessValue: map (metrics: list, footerNote)
+    //   - roadmap: map (items: list)
+    //   - ownerId: string (required, immutable)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.ownerId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "pei19366@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidCase(data) {
+      return data.id is string &&
+             data.title is string && data.title.size() < 200 &&
+             data.status in ['draft', 'published'] &&
+             data.version is number &&
+             data.lastModified is number &&
+             data.ownerId is string &&
+             (!('subtitle' in data) || (data.subtitle is string && data.subtitle.size() < 500)) &&
+             (!('author' in data) || (data.author is string && data.author.size() < 100)) &&
+             (!('team' in data) || (data.team is string && data.team.size() < 100)) &&
+             (!('organization' in data) || (data.organization is string && data.organization.size() < 100)) &&
+             data.challenges is map &&
+             data.implementation is map &&
+             data.businessValue is map &&
+             data.roadmap is map;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /cases/{caseId} {
+      // Published cases are public. Drafts are private to owner/admin.
+      allow read: if resource.data.status == 'published' || (isAuthenticated() && (isDocOwner() || isAdmin()));
+      
+      // Create: must be authenticated, valid data, and set themselves as owner
+      allow create: if isAuthenticated() && 
+                      isValidCase(request.resource.data) && 
+                      request.resource.data.ownerId == request.auth.uid;
+      
+      // Update: must be owner or admin, valid data, ownerId cannot change
+      allow update: if (isDocOwner() || isAdmin()) && 
+                      isValidCase(request.resource.data) && 
+                      request.resource.data.ownerId == resource.data.ownerId;
+      
+      // Delete: must be owner or admin
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      // Only admins can create/update user roles
+      allow write: if isAdmin();
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}
