@@ -220,7 +220,13 @@ export default function App() {
   }, []);
 
   // Load from API with Real-time Sync
-  const [lastLoadedTime, setLastLoadedTime] = useState(0);
+  const lastLoadedTimeRef = React.useRef(0);
+  const activeViewRef = React.useRef(activeView);
+
+  // Update refs when values change
+  React.useEffect(() => {
+    activeViewRef.current = activeView;
+  }, [activeView]);
 
   useEffect(() => {
     if (!isAuthReady) return;
@@ -234,7 +240,7 @@ export default function App() {
         } else {
           setCases(data);
         }
-        setLastLoadedTime(Date.now());
+        lastLoadedTimeRef.current = Date.now();
       });
     };
 
@@ -244,16 +250,16 @@ export default function App() {
     // Listen for updates from other users
     const unsubscribe = apiService.onCasesUpdated(() => {
       // 防抖：3 秒内不重复刷新
-      if (Date.now() - lastLoadedTime < 3000) return;
+      if (Date.now() - lastLoadedTimeRef.current < 3000) return;
 
       // 只在 dashboard 视图时刷新
-      if (activeView !== 'dashboard') return;
+      if (activeViewRef.current !== 'dashboard') return;
 
       loadCases();
     });
 
     return () => unsubscribe();
-  }, [isAuthReady, user, activeView, lastLoadedTime]);
+  }, [isAuthReady, user]);
 
   // Load DB Config
   useEffect(() => {
