@@ -479,48 +479,56 @@ async function startServer() {
   // Save/Update case
   app.post('/api/cases', async (req, res) => {
     try {
-      const newCase = req.body;
+      const incomingCase = req.body;
       // 从请求头获取用户身份信息
-      const userId = req.headers['x-user-id'] as string;
-      const userRole = req.headers['x-user-role'] as string;
-      let ownerId = newCase.ownerId || null;
+      const userId = (req.headers['x-user-id'] as string | undefined)?.trim();
 
-      // 权限验证：用户只能创建/编辑自己的案例，admin 可以编辑所有案例
-      if (ownerId && userId && ownerId !== userId && userRole !== 'admin') {
-        return res.status(403).json({ success: false, message: '无权修改他人案例' });
+      if (!userId) {
+        return res.status(401).json({ success: false, message: '未登录或登录已失效' });
+      }
+
+      if (!incomingCase?.id) {
+        return res.status(400).json({ success: false, message: '案例 id 缺失' });
       }
 
       // 使用严格类型转换确保 isPublic 为 boolean 值，避免 undefined 被转为 false
-      const isPublic = newCase.isPublic === true;
-      console.log(`[Save Case] id=${newCase.id}, isPublic=${isPublic}, inputType=${typeof newCase.isPublic}, inputValue=${newCase.isPublic}`);
+      const isPublic = incomingCase.isPublic === true;
+      console.log(`[Save Case] id=${incomingCase.id}, isPublic=${isPublic}, inputType=${typeof incomingCase.isPublic}, inputValue=${incomingCase.isPublic}`);
 
       if (pool) {
         try {
-          // Sync user to MySQL if owner_id exists but not in MySQL
-          if (ownerId) {
-            const [users]: any = await pool.query('SELECT id FROM users WHERE id = ?', [ownerId]);
-            if (users.length === 0) {
-              // User doesn't exist in MySQL, try to sync from file storage
-              const usersFile = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
-              const fileUser = usersFile.find((u: any) => u.id === ownerId);
+          const [existingRows]: any = await pool.query(
+            'SELECT owner_id FROM cases WHERE id = ? LIMIT 1',
+            [incomingCase.id]
+          );
+          const existingOwnerId = existingRows.length > 0 ? existingRows[0].owner_id : null;
 
-              if (fileUser) {
-                // Sync user from file to MySQL
-                await pool.query(
-                  'INSERT INTO users (id, username, password, email, role) VALUES (?, ?, ?, ?, ?)',
-                  [fileUser.id, fileUser.username, fileUser.password, fileUser.email || null, fileUser.role]
-                );
-                console.log(`Synced user ${fileUser.username} from file to MySQL during case save`);
-              } else {
-                console.log(`User ${ownerId} not found in file storage, setting owner_id to NULL`);
-                ownerId = null;
-              }
+          // 无论角色如何，均禁止修改他人案例
+          if (existingOwnerId && existingOwnerId !== userId) {
+            return res.status(403).json({ success: false, message: '无权修改他人案例' });
+          }
+
+          const validatedOwnerId = existingOwnerId || userId;
+          const sanitizedCase = { ...incomingCase, ownerId: validatedOwnerId };
+
+          // Ensure owner exists in MySQL to satisfy FK
+          const [users]: any = await pool.query('SELECT id FROM users WHERE id = ?', [validatedOwnerId]);
+          if (users.length === 0) {
+            const usersFile = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
+            const fileUser = usersFile.find((u: any) => u.id === validatedOwnerId);
+            if (!fileUser) {
+              return res.status(403).json({ success: false, message: '无效用户，无法保存案例' });
             }
+            await pool.query(
+              'INSERT INTO users (id, username, password, email, role) VALUES (?, ?, ?, ?, ?)',
+              [fileUser.id, fileUser.username, fileUser.password, fileUser.email || null, fileUser.role]
+            );
+            console.log(`Synced user ${fileUser.username} from file to MySQL during case save`);
           }
 
           await pool.query(
             'INSERT INTO cases (id, case_data, owner_id, is_public) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE case_data = ?, owner_id = ?, is_public = ?',
-            [newCase.id, JSON.stringify(newCase), ownerId, isPublic, JSON.stringify(newCase), ownerId, isPublic]
+            [sanitizedCase.id, JSON.stringify(sanitizedCase), validatedOwnerId, isPublic, JSON.stringify(sanitizedCase), validatedOwnerId, isPublic]
           );
 
           const [rows]: any = await pool.query('SELECT case_data FROM cases ORDER BY updated_at DESC');
@@ -528,33 +536,20 @@ async function startServer() {
           io.emit('cases_updated', allCases);
           return res.json({ success: true });
         } catch (dbErr: any) {
-          // Handle foreign key constraint error by setting owner_id to NULL
-          if (dbErr.code === 'ER_NO_REFERENCED_ROW_2') {
-            console.log('Foreign key constraint failed, retrying with owner_id=NULL');
-            try {
-              await pool.query(
-                'INSERT INTO cases (id, case_data, owner_id, is_public) VALUES (?, ?, NULL, ?) ON DUPLICATE KEY UPDATE case_data = ?, owner_id = NULL, is_public = ?',
-                [newCase.id, JSON.stringify(newCase), isPublic, JSON.stringify(newCase), isPublic]
-              );
-              const [rows]: any = await pool.query('SELECT case_data FROM cases ORDER BY updated_at DESC');
-              const allCases = rows.map((row: any) => row.case_data);
-              io.emit('cases_updated', allCases);
-              return res.json({ success: true });
-            } catch (retryErr) {
-              console.error('MySQL save failed (retry):', retryErr);
-            }
-          } else {
-            console.error('MySQL save failed:', dbErr);
-          }
+          console.error('MySQL save failed:', dbErr);
         }
       }
 
       const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-      const index = data.findIndex((c: any) => c.id === newCase.id);
+      const index = data.findIndex((c: any) => c.id === incomingCase.id);
       if (index !== -1) {
-        data[index] = newCase;
+        const existingOwnerId = data[index]?.ownerId;
+        if (existingOwnerId && existingOwnerId !== userId) {
+          return res.status(403).json({ success: false, message: '无权修改他人案例' });
+        }
+        data[index] = { ...incomingCase, ownerId: existingOwnerId || userId };
       } else {
-        data.push(newCase);
+        data.push({ ...incomingCase, ownerId: userId });
       }
 
       fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));

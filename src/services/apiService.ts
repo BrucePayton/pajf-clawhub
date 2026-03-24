@@ -88,6 +88,12 @@ export const apiService = {
       headers,
       body: payload
     });
+    if (response.status === 403) {
+      throw new Error('CASE_FORBIDDEN');
+    }
+    if (response.status === 401) {
+      throw new Error('CASE_UNAUTHORIZED');
+    }
     return response.ok;
   },
 

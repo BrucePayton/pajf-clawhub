@@ -222,11 +222,16 @@ export default function App() {
   // Load from API with Real-time Sync
   const lastLoadedTimeRef = React.useRef(0);
   const activeViewRef = React.useRef(activeView);
+  const showLoginModalRef = React.useRef(showLoginModal);
 
   // Update refs when values change
   React.useEffect(() => {
     activeViewRef.current = activeView;
   }, [activeView]);
+
+  React.useEffect(() => {
+    showLoginModalRef.current = showLoginModal;
+  }, [showLoginModal]);
 
   useEffect(() => {
     if (!isAuthReady) return;
@@ -254,6 +259,9 @@ export default function App() {
 
       // 只在 dashboard 视图时刷新
       if (activeViewRef.current !== 'dashboard') return;
+
+      // 登录中避免刷新导致弹窗闪动或输入状态丢失
+      if (showLoginModalRef.current) return;
 
       loadCases();
     });
@@ -292,6 +300,10 @@ export default function App() {
     } catch (error: any) {
       if (error?.message === 'CASE_PAYLOAD_TOO_LARGE') {
         showToast('内容体积过大，请减少步骤图片数量或更换更小图片。', 'error');
+      } else if (error?.message === 'CASE_FORBIDDEN') {
+        showToast('无权修改他人案例', 'error');
+      } else if (error?.message === 'CASE_UNAUTHORIZED') {
+        showToast('请先登录再操作', 'error');
       } else {
         showToast('创建失败，请检查网络或数据库连接', 'error');
       }
@@ -348,6 +360,10 @@ export default function App() {
     } catch (error: any) {
       if (error?.message === 'CASE_PAYLOAD_TOO_LARGE') {
         showToast('保存失败：内容体积过大，请减少步骤图片数量或更换更小图片。', 'error');
+      } else if (error?.message === 'CASE_FORBIDDEN') {
+        showToast('无权修改他人案例', 'error');
+      } else if (error?.message === 'CASE_UNAUTHORIZED') {
+        showToast('请先登录再操作', 'error');
       } else {
         showToast('保存失败，请检查网络或数据库连接', 'error');
       }
@@ -389,6 +405,10 @@ export default function App() {
     } catch (error: any) {
       if (error?.message === 'CASE_PAYLOAD_TOO_LARGE') {
         showToast('发布失败：内容体积过大，请减少步骤图片数量或更换更小图片。', 'error');
+      } else if (error?.message === 'CASE_FORBIDDEN') {
+        showToast('无权修改他人案例', 'error');
+      } else if (error?.message === 'CASE_UNAUTHORIZED') {
+        showToast('请先登录再操作', 'error');
       } else {
         showToast('发布失败，请检查网络或数据库连接', 'error');
       }
@@ -483,6 +503,10 @@ export default function App() {
           setSearchQuery={setSearchQuery}
           onNewCase={handleCreate}
           onEditCase={(c) => {
+            if (!user || c.ownerId !== user.uid) {
+              showToast('无权修改他人案例', 'error');
+              return;
+            }
             setCurrentCase(c);
             setActiveView('editor');
           }}
@@ -539,6 +563,7 @@ export default function App() {
 
         {showLoginModal && (
           <LoginModal 
+            key="login-modal"
             onLogin={handleLogin}
             onClose={() => setShowLoginModal(false)}
           />

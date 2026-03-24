@@ -230,8 +230,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         >
                           <Eye className="w-4.5 h-4.5" />
                         </button>
-                        {/* 编辑按钮：只显示给案例所有者或管理员 */}
-                        {(user?.uid === c.ownerId || user?.role === 'admin') && (
+                        {/* 编辑按钮：仅显示给案例所有者 */}
+                        {user?.uid === c.ownerId && (
                           <button
                             onClick={() => onEditCase(c)}
                             className="p-2.5 text-neutral-400 hover:text-brand-500 hover:bg-brand-50 rounded-xl transition-all"
