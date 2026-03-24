@@ -43,12 +43,20 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({ analytic
   if (!analytics) {
     return (
       <div className="card-modern p-6 mb-12">
-        <p className="text-sm text-neutral-500">暂无分析数据</p>
+        <p className="text-sm text-neutral-500">正在初始化分析数据，请稍后刷新。</p>
       </div>
     );
   }
 
   const { totals, charts, rankings } = analytics;
+
+  if (totals.cases === 0) {
+    return (
+      <div className="card-modern p-6 mb-12">
+        <p className="text-sm text-neutral-500">数据库暂无案例数据，请先创建或初始化案例。</p>
+      </div>
+    );
+  }
 
   return (
     <section className="space-y-6 mb-12">

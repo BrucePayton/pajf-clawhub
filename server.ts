@@ -90,6 +90,80 @@ const getVisitorKey = (req: express.Request) => {
   return `anon:${hash}`;
 };
 
+const createBootstrapCases = () => {
+  const now = Date.now();
+  return [
+    ensureCaseLikeFields({
+      id: 'bootstrap-sample-1',
+      title: 'OpenClaw 自动化报表生成案例',
+      subtitle: '系统初始化样例：财务月报自动汇总与分发',
+      status: 'published',
+      version: 1.0,
+      lastModified: now,
+      author: '系统示例',
+      umNumber: 'SYS-001',
+      team: '系统初始化',
+      organization: '财服总部',
+      ownerId: 'admin-1',
+      isPublic: true,
+      challenges: {
+        background: '系统初始化示例数据',
+        painPoints: ['跨系统数据导出繁琐', '汇总耗时'],
+        objectives: '自动化报表处理流程',
+      },
+      implementation: {
+        steps: [
+          { id: 's1', title: '自动抓取', description: '抓取源系统数据', imageUrl: '' },
+          { id: 's2', title: '清洗汇总', description: '执行标准化与汇总', imageUrl: '' },
+        ],
+      },
+      businessValue: {
+        metrics: [
+          { id: 'm1', label: '效率提升', value: '90%', subtext: '显著缩短处理时间', icon: 'trending-up' },
+        ],
+        footerNote: '系统初始化样例',
+      },
+      roadmap: {
+        items: [{ id: 'r1', task: '能力扩展', content: '扩展更多场景', date: '2026.06' }],
+      },
+    }),
+    ensureCaseLikeFields({
+      id: 'bootstrap-sample-2',
+      title: '智能客服工单分类样例',
+      subtitle: '系统初始化样例：工单自动分类与分派',
+      status: 'published',
+      version: 1.0,
+      lastModified: now,
+      author: '系统示例',
+      umNumber: 'SYS-002',
+      team: '系统初始化',
+      organization: '深圳分公司',
+      ownerId: 'admin-1',
+      isPublic: true,
+      challenges: {
+        background: '系统初始化示例数据',
+        painPoints: ['工单积压', '分派误差'],
+        objectives: '提升工单处理效率',
+      },
+      implementation: {
+        steps: [
+          { id: 's1', title: '实时抓取', description: '抓取新工单', imageUrl: '' },
+          { id: 's2', title: '自动分派', description: '按规则分配工单', imageUrl: '' },
+        ],
+      },
+      businessValue: {
+        metrics: [
+          { id: 'm1', label: '响应时间', value: '-80%', subtext: '明显提升处理速度', icon: 'clock' },
+        ],
+        footerNote: '系统初始化样例',
+      },
+      roadmap: {
+        items: [{ id: 'r1', task: '质量优化', content: '持续优化分类准确率', date: '2026.07' }],
+      },
+    }),
+  ];
+};
+
 const computeCompleteness = (caseData: any): number => {
   const steps = caseData?.implementation?.steps ?? [];
   const metrics = caseData?.businessValue?.metrics ?? [];
@@ -610,6 +684,47 @@ async function startServer() {
     } catch (err) {
       console.error('Error fetching cases:', err);
       res.status(500).json({ error: '读取数据失败' });
+    }
+  });
+
+  app.post('/api/cases/bootstrap', async (_req, res) => {
+    try {
+      const bootstrapCases = createBootstrapCases();
+
+      if (pool) {
+        try {
+          const [countRows]: any = await pool.query('SELECT COUNT(*) AS total FROM cases');
+          const total = Number(countRows?.[0]?.total ?? 0);
+          if (total > 0) {
+            return res.json({ success: true, inserted: 0 });
+          }
+
+          for (const c of bootstrapCases) {
+            await pool.query(
+              'INSERT INTO cases (id, case_data, owner_id, is_public) VALUES (?, ?, ?, ?)',
+              [c.id, JSON.stringify(c), 'admin-1', true]
+            );
+          }
+
+          const [rows]: any = await pool.query('SELECT case_data FROM cases ORDER BY updated_at DESC');
+          io.emit('cases_updated', rows.map((row: any) => ensureCaseLikeFields(row.case_data)));
+          return res.json({ success: true, inserted: bootstrapCases.length });
+        } catch (dbErr) {
+          console.error('MySQL bootstrap failed, falling back to file storage:', dbErr);
+        }
+      }
+
+      const allCases = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+      if (Array.isArray(allCases) && allCases.length > 0) {
+        return res.json({ success: true, inserted: 0 });
+      }
+
+      fs.writeFileSync(DATA_FILE, JSON.stringify(bootstrapCases, null, 2));
+      io.emit('cases_updated', bootstrapCases);
+      return res.json({ success: true, inserted: bootstrapCases.length });
+    } catch (err) {
+      console.error('Error bootstrapping cases:', err);
+      return res.status(500).json({ success: false, message: '初始化案例失败' });
     }
   });
 

@@ -105,6 +105,16 @@ export const apiService = {
     return null;
   },
 
+  bootstrapCases: async (): Promise<{ success: boolean; inserted?: number }> => {
+    const response = await fetch(`${API_URL}/api/cases/bootstrap`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      return { success: false };
+    }
+    return await response.json();
+  },
+
   likeCase: async (id: string, user?: User | null): Promise<LikeCaseResult> => {
     const savedUser = localStorage.getItem('internal_user');
     const currentUser = user || (savedUser ? JSON.parse(savedUser) : null);

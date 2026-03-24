@@ -231,19 +231,26 @@ export default function App() {
   const refreshCasesOnce = useCallback(async (userId?: string) => {
     try {
       const data = await apiService.getCases(userId);
-      if (data.length === 0) {
-        setCases(INITIAL_CASES);
-      } else {
-        setCases(data);
-      }
+      setCases(data);
       // 手动刷新后更新时间戳，避免紧接着被 socket 再次触发重复拉取
       lastLoadedTimeRef.current = Date.now();
     } catch (error) {
       console.error('Failed to refresh cases:', error);
-      setCases(INITIAL_CASES);
+      setCases([]);
       lastLoadedTimeRef.current = Date.now();
     }
   }, []);
+
+  const ensureBootstrapAndLoad = useCallback(async (userId?: string) => {
+    let currentCases = await apiService.getCases(userId);
+    if (currentCases.length === 0) {
+      await apiService.bootstrapCases();
+      currentCases = await apiService.getCases(userId);
+    }
+    setCases(currentCases);
+    lastLoadedTimeRef.current = Date.now();
+    await loadFullAnalytics();
+  }, [loadFullAnalytics]);
 
   // Auth Persistence
   useEffect(() => {
@@ -268,9 +275,8 @@ export default function App() {
   useEffect(() => {
     if (!isAuthReady) return;
 
-    // Initial load
-    refreshCasesOnce(user?.uid);
-    loadFullAnalytics();
+    // Initial load with backend bootstrap
+    ensureBootstrapAndLoad(user?.uid);
 
     // Listen for updates from other users
     const unsubscribe = apiService.onCasesUpdated(() => {
@@ -288,7 +294,7 @@ export default function App() {
     });
 
     return () => unsubscribe();
-  }, [isAuthReady, user, loadFullAnalytics, refreshCasesOnce]);
+  }, [isAuthReady, user, loadFullAnalytics, refreshCasesOnce, ensureBootstrapAndLoad]);
 
   useEffect(() => {
     if (activeView === 'dashboard') {
@@ -517,7 +523,7 @@ export default function App() {
       await refreshCasesOnce(undefined);
     } catch (err) {
       console.error('Failed to reload cases after logout:', err);
-      setCases(INITIAL_CASES);
+      setCases([]);
     }
   };
 
