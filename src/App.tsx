@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo, useCallback, Component } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Plus, 
   Trash2, 
@@ -31,7 +31,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { Case, CaseStep, MetricCard, RoadmapItem, DbConfig } from './types';
 import { exportToPptx } from './services/pptxService';
-import { apiService, User } from './services/apiService';
+import { apiService, FullAnalyticsData, User } from './services/apiService';
 import { Toast, ConfirmDialog } from './components/Common';
 import { LoginModal } from './components/LoginModal';
 import { DbConfigModal } from './components/DbConfigModal';
@@ -184,125 +184,6 @@ const createNewCase = (): Case => ({
   },
 });
 
-type RegionAnalyticsRow = {
-  name: string;
-  count: number;
-  publishedCount: number;
-  qualityScore: number;
-};
-
-type UserAnalyticsRow = {
-  userId: string;
-  displayName: string;
-  total: number;
-  published: number;
-  privateCount: number;
-  publishRate: number;
-  avgQualityScore: number;
-};
-
-const computeCompleteness = (caseData: Case): number => {
-  const steps = caseData.implementation?.steps ?? [];
-  const metrics = caseData.businessValue?.metrics ?? [];
-  const roadmap = caseData.roadmap?.items ?? [];
-
-  const validSteps = steps.filter((s) => !!s.title?.trim() && !!s.description?.trim()).length;
-  const validMetrics = metrics.filter((m) => !!m.label?.trim() && !!m.value?.trim()).length;
-  const validRoadmap = roadmap.filter((r) => !!r.task?.trim() && !!r.content?.trim()).length;
-
-  const stepScore = steps.length > 0 ? validSteps / steps.length : 0;
-  const metricScore = metrics.length > 0 ? validMetrics / metrics.length : 0;
-  const roadmapScore = roadmap.length > 0 ? validRoadmap / roadmap.length : 0;
-
-  // Equal-weighted section completeness
-  return (stepScore + metricScore + roadmapScore) / 3;
-};
-
-const computeCaseQualityScore = (caseData: Case): number => {
-  const publishedRate = caseData.status === 'published' ? 1 : 0;
-  const normalizedVersion = Math.min((caseData.version ?? 0) / 3, 1);
-  const completeness = computeCompleteness(caseData);
-
-  // Weighted score: publish rate 45%, version 20%, completeness 35%
-  return (publishedRate * 0.45 + normalizedVersion * 0.2 + completeness * 0.35) * 100;
-};
-
-const sortByPrimaryMetrics = <T extends { name?: string; displayName?: string; count?: number; qualityScore?: number; avgQualityScore?: number }>(
-  rows: T[],
-  metricKey: 'count' | 'qualityScore' | 'avgQualityScore'
-) => {
-  return [...rows].sort((a, b) => {
-    const aMetric = Number(a[metricKey] ?? 0);
-    const bMetric = Number(b[metricKey] ?? 0);
-    if (bMetric !== aMetric) return bMetric - aMetric;
-
-    const aCount = Number(a.count ?? 0);
-    const bCount = Number(b.count ?? 0);
-    if (bCount !== aCount) return bCount - aCount;
-
-    const aName = (a.name || a.displayName || '').toString();
-    const bName = (b.name || b.displayName || '').toString();
-    return aName.localeCompare(bName, 'zh-Hans-CN');
-  });
-};
-
-const buildDashboardAnalytics = (cases: Case[]) => {
-  const regionMap = new Map<string, { count: number; publishedCount: number; qualityTotal: number }>();
-  const userMap = new Map<string, { displayName: string; total: number; published: number; privateCount: number; qualityTotal: number }>();
-
-  for (const c of cases) {
-    const quality = computeCaseQualityScore(c);
-    const region = c.organization || '未指定组织';
-
-    const regionStats = regionMap.get(region) || { count: 0, publishedCount: 0, qualityTotal: 0 };
-    regionStats.count += 1;
-    if (c.status === 'published') regionStats.publishedCount += 1;
-    regionStats.qualityTotal += quality;
-    regionMap.set(region, regionStats);
-
-    const userId = c.ownerId || 'unknown';
-    const displayName = c.author?.trim() || '未命名用户';
-    const userStats = userMap.get(userId) || { displayName, total: 0, published: 0, privateCount: 0, qualityTotal: 0 };
-    userStats.displayName = displayName;
-    userStats.total += 1;
-    if (c.status === 'published') userStats.published += 1;
-    if (c.isPublic !== true) userStats.privateCount += 1;
-    userStats.qualityTotal += quality;
-    userMap.set(userId, userStats);
-  }
-
-  const regionRows: RegionAnalyticsRow[] = Array.from(regionMap.entries()).map(([name, stats]) => ({
-    name,
-    count: stats.count,
-    publishedCount: stats.publishedCount,
-    qualityScore: stats.count > 0 ? stats.qualityTotal / stats.count : 0,
-  }));
-
-  const userRows: UserAnalyticsRow[] = Array.from(userMap.entries()).map(([userId, stats]) => ({
-    userId,
-    displayName: stats.displayName,
-    total: stats.total,
-    published: stats.published,
-    privateCount: stats.privateCount,
-    publishRate: stats.total > 0 ? stats.published / stats.total : 0,
-    avgQualityScore: stats.total > 0 ? stats.qualityTotal / stats.total : 0,
-  }));
-
-  const regionCountRanking = sortByPrimaryMetrics(regionRows, 'count');
-  const regionQualityRanking = sortByPrimaryMetrics(regionRows, 'qualityScore');
-  const userOverview = sortByPrimaryMetrics(userRows, 'count');
-  const topByCaseCount = userOverview.slice(0, 5);
-  const topByQuality = sortByPrimaryMetrics(userRows, 'avgQualityScore').slice(0, 5);
-
-  return {
-    regionCountRanking,
-    regionQualityRanking,
-    userOverview,
-    topByCaseCount,
-    topByQuality,
-  };
-};
-
 export default function App() {
   const [cases, setCases] = useState<Case[]>([]);
   const [activeView, setActiveView] = useState<'dashboard' | 'editor' | 'canvas'>('dashboard');
@@ -322,13 +203,47 @@ export default function App() {
     password: '',
     database: 'claw_cases'
   });
+  const [fullAnalytics, setFullAnalytics] = useState<FullAnalyticsData | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+  const lastLoadedTimeRef = React.useRef(0);
+  const activeViewRef = React.useRef(activeView);
+  const showLoginModalRef = React.useRef(showLoginModal);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
 
-  const dashboardAnalytics = useMemo(() => buildDashboardAnalytics(cases), [cases]);
+  const loadFullAnalytics = useCallback(async () => {
+    setAnalyticsLoading(true);
+    setAnalyticsError(null);
+    try {
+      const data = await apiService.getFullAnalytics();
+      setFullAnalytics(data);
+    } catch (error: any) {
+      setAnalyticsError(error?.message || '未知错误');
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, []);
+
+  const refreshCasesOnce = useCallback(async (userId?: string) => {
+    try {
+      const data = await apiService.getCases(userId);
+      if (data.length === 0) {
+        setCases(INITIAL_CASES);
+      } else {
+        setCases(data);
+      }
+      // 手动刷新后更新时间戳，避免紧接着被 socket 再次触发重复拉取
+      lastLoadedTimeRef.current = Date.now();
+    } catch (error) {
+      console.error('Failed to refresh cases:', error);
+      setCases(INITIAL_CASES);
+      lastLoadedTimeRef.current = Date.now();
+    }
+  }, []);
 
   // Auth Persistence
   useEffect(() => {
@@ -341,10 +256,6 @@ export default function App() {
   }, []);
 
   // Load from API with Real-time Sync
-  const lastLoadedTimeRef = React.useRef(0);
-  const activeViewRef = React.useRef(activeView);
-  const showLoginModalRef = React.useRef(showLoginModal);
-
   // Update refs when values change
   React.useEffect(() => {
     activeViewRef.current = activeView;
@@ -357,21 +268,9 @@ export default function App() {
   useEffect(() => {
     if (!isAuthReady) return;
 
-    // Load cases based on user authentication status
-    const loadCases = () => {
-      const userId = user?.uid;
-      apiService.getCases(userId).then(data => {
-        if (data.length === 0) {
-          setCases(INITIAL_CASES);
-        } else {
-          setCases(data);
-        }
-        lastLoadedTimeRef.current = Date.now();
-      });
-    };
-
     // Initial load
-    loadCases();
+    refreshCasesOnce(user?.uid);
+    loadFullAnalytics();
 
     // Listen for updates from other users
     const unsubscribe = apiService.onCasesUpdated(() => {
@@ -384,11 +283,18 @@ export default function App() {
       // 登录中避免刷新导致弹窗闪动或输入状态丢失
       if (showLoginModalRef.current) return;
 
-      loadCases();
+      refreshCasesOnce(user?.uid);
+      loadFullAnalytics();
     });
 
     return () => unsubscribe();
-  }, [isAuthReady, user]);
+  }, [isAuthReady, user, loadFullAnalytics, refreshCasesOnce]);
+
+  useEffect(() => {
+    if (activeView === 'dashboard') {
+      loadFullAnalytics();
+    }
+  }, [activeView, loadFullAnalytics]);
 
   // Load DB Config
   useEffect(() => {
@@ -453,6 +359,20 @@ export default function App() {
     setConfirmDelete(id);
   };
 
+  const handleLikeCase = async (id: string) => {
+    const result = await apiService.likeCase(id, user);
+    if (!result.success) {
+      showToast(result.message || '点赞失败', 'error');
+      return;
+    }
+    if (result.duplicated) {
+      showToast('你已经点过赞了', 'error');
+    } else {
+      showToast('点赞成功');
+    }
+    await refreshCasesOnce(user?.uid);
+  };
+
   const confirmDeleteCase = async () => {
     if (confirmDelete) {
       const target = cases.find(c => c.id === confirmDelete);
@@ -506,6 +426,7 @@ export default function App() {
     try {
       const success = await apiService.saveCase(updatedCase, user);
       if (success) {
+        await refreshCasesOnce(user.uid);
         showToast('保存成功');
         setActiveView('dashboard');
       } else {
@@ -579,14 +500,7 @@ export default function App() {
 
       // Reload cases with new user context after a short delay
       setTimeout(() => {
-        const userId = loggedInUser.uid;
-        apiService.getCases(userId).then(data => {
-          if (data.length === 0) {
-            setCases(INITIAL_CASES);
-          } else {
-            setCases(data);
-          }
-        });
+        refreshCasesOnce(loggedInUser.uid);
       }, 500);
     } else {
       showToast('用户名或密码错误', 'error');
@@ -600,8 +514,7 @@ export default function App() {
 
     // 立即刷新案例列表（仅公开案例）
     try {
-      const data = await apiService.getCases(undefined);
-      setCases(data.length === 0 ? INITIAL_CASES : data);
+      await refreshCasesOnce(undefined);
     } catch (err) {
       console.error('Failed to reload cases after logout:', err);
       setCases(INITIAL_CASES);
@@ -651,7 +564,9 @@ export default function App() {
         <Dashboard
           cases={cases}
           user={user}
-          analyticsData={dashboardAnalytics}
+          fullAnalytics={fullAnalytics}
+          analyticsLoading={analyticsLoading}
+          analyticsError={analyticsError}
           appName={metadata.name}
           appDescription={metadata.description}
           searchQuery={searchQuery}
@@ -670,6 +585,7 @@ export default function App() {
             setActiveView('canvas');
           }}
           onDeleteCase={handleDelete}
+          onLikeCase={handleLikeCase}
           onLogin={() => setShowLoginModal(true)}
           onLogout={handleLogout}
           onOpenDbConfig={() => setShowDbConfig(true)}
@@ -681,7 +597,10 @@ export default function App() {
         <Editor 
           caseData={currentCase} 
           setCaseData={setCurrentCase}
-          onBack={() => setActiveView('dashboard')}
+          onBack={async () => {
+            await refreshCasesOnce(user?.uid);
+            setActiveView('dashboard');
+          }}
           onSave={handleSave}
           onPublish={handlePublish}
           showToast={showToast}

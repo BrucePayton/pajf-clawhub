@@ -35,6 +35,8 @@ export interface Case {
   organization: Organization;
   ownerId?: string;
   isPublic?: boolean;
+  likeCount?: number;
+  likedByKeys?: string[];
 
   // Section 01: Challenges - 可选字段，提供 null 安全性
   challenges?: {

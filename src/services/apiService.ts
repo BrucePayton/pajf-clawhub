@@ -12,6 +12,36 @@ export interface User {
   photoURL?: string;
 }
 
+export interface FullAnalyticsData {
+  totals: {
+    cases: number;
+    published: number;
+    privateCases: number;
+    users: number;
+    regions: number;
+  };
+  charts: {
+    regionCaseCount: Array<{ name: string; count: number }>;
+    regionQuality: Array<{ name: string; qualityScore: number }>;
+    userTopByCaseCount: Array<{ name: string; total: number }>;
+    userTopByQuality: Array<{ name: string; avgQualityScore: number }>;
+  };
+  rankings: {
+    regionCountRanking: Array<{ name: string; count: number; publishedCount: number; qualityScore: number }>;
+    regionQualityRanking: Array<{ name: string; count: number; publishedCount: number; qualityScore: number }>;
+    userOverview: Array<{ userId: string; displayName: string; total: number; published: number; privateCount: number; publishRate: number; avgQualityScore: number }>;
+    topByCaseCount: Array<{ userId: string; displayName: string; total: number; published: number; privateCount: number; publishRate: number; avgQualityScore: number }>;
+    topByQuality: Array<{ userId: string; displayName: string; total: number; published: number; privateCount: number; publishRate: number; avgQualityScore: number }>;
+  };
+}
+
+export interface LikeCaseResult {
+  success: boolean;
+  duplicated?: boolean;
+  likeCount?: number;
+  message?: string;
+}
+
 export const apiService = {
   // Auth
   login: async (username: string, password: string): Promise<User | null> => {
@@ -65,6 +95,37 @@ export const apiService = {
       return await response.json();
     }
     return [];
+  },
+
+  getFullAnalytics: async (): Promise<FullAnalyticsData | null> => {
+    const response = await fetch(`${API_URL}/api/analytics/full`);
+    if (response.ok) {
+      return await response.json();
+    }
+    return null;
+  },
+
+  likeCase: async (id: string, user?: User | null): Promise<LikeCaseResult> => {
+    const savedUser = localStorage.getItem('internal_user');
+    const currentUser = user || (savedUser ? JSON.parse(savedUser) : null);
+    const headers: Record<string, string> = {};
+    if (currentUser) {
+      headers['X-User-ID'] = currentUser.uid;
+    }
+    const response = await fetch(`${API_URL}/api/cases/${id}/like`, {
+      method: 'POST',
+      headers,
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      return { success: false, message: data?.message || '点赞失败' };
+    }
+    return {
+      success: true,
+      duplicated: !!data?.duplicated,
+      likeCount: data?.likeCount,
+      message: data?.message,
+    };
   },
 
   saveCase: async (caseData: any, user?: User | null): Promise<boolean> => {

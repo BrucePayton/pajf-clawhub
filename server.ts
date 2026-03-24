@@ -9,6 +9,7 @@ import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 import { pathToFileURL } from 'url';
 import os from 'os';
+import crypto from 'crypto';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
@@ -66,6 +67,142 @@ if (fs.existsSync(DB_CONFIG_FILE)) {
 }
 
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
+
+const ensureCaseLikeFields = (caseData: any) => {
+  const likeCount = Number.isFinite(caseData?.likeCount) ? Math.max(0, Number(caseData.likeCount)) : 0;
+  const likedByKeys = Array.isArray(caseData?.likedByKeys)
+    ? Array.from(new Set(caseData.likedByKeys.filter((k: any) => typeof k === 'string' && k.trim().length > 0)))
+    : [];
+  return {
+    ...caseData,
+    likeCount,
+    likedByKeys,
+  };
+};
+
+const getVisitorKey = (req: express.Request) => {
+  const userId = (req.headers['x-user-id'] as string | undefined)?.trim();
+  if (userId) return `uid:${userId}`;
+
+  const userAgent = (req.headers['user-agent'] as string | undefined) || 'unknown-agent';
+  const raw = `${req.ip}|${userAgent}`;
+  const hash = crypto.createHash('sha256').update(raw).digest('hex').slice(0, 24);
+  return `anon:${hash}`;
+};
+
+const computeCompleteness = (caseData: any): number => {
+  const steps = caseData?.implementation?.steps ?? [];
+  const metrics = caseData?.businessValue?.metrics ?? [];
+  const roadmap = caseData?.roadmap?.items ?? [];
+
+  const validSteps = steps.filter((s: any) => !!s?.title?.trim?.() && !!s?.description?.trim?.()).length;
+  const validMetrics = metrics.filter((m: any) => !!m?.label?.trim?.() && !!m?.value?.trim?.()).length;
+  const validRoadmap = roadmap.filter((r: any) => !!r?.task?.trim?.() && !!r?.content?.trim?.()).length;
+
+  const stepScore = steps.length > 0 ? validSteps / steps.length : 0;
+  const metricScore = metrics.length > 0 ? validMetrics / metrics.length : 0;
+  const roadmapScore = roadmap.length > 0 ? validRoadmap / roadmap.length : 0;
+
+  return (stepScore + metricScore + roadmapScore) / 3;
+};
+
+const computeCaseQualityScore = (caseData: any): number => {
+  const publishedRate = caseData?.status === 'published' ? 1 : 0;
+  const normalizedVersion = Math.min((caseData?.version ?? 0) / 3, 1);
+  const completeness = computeCompleteness(caseData);
+  return (publishedRate * 0.45 + normalizedVersion * 0.2 + completeness * 0.35) * 100;
+};
+
+const sortByMetrics = <T extends { name?: string; displayName?: string; count?: number; qualityScore?: number; avgQualityScore?: number }>(
+  rows: T[],
+  metricKey: 'count' | 'qualityScore' | 'avgQualityScore'
+) => {
+  return [...rows].sort((a, b) => {
+    const aMetric = Number(a[metricKey] ?? 0);
+    const bMetric = Number(b[metricKey] ?? 0);
+    if (bMetric !== aMetric) return bMetric - aMetric;
+
+    const aCount = Number(a.count ?? 0);
+    const bCount = Number(b.count ?? 0);
+    if (bCount !== aCount) return bCount - aCount;
+
+    const aName = (a.name || a.displayName || '').toString();
+    const bName = (b.name || b.displayName || '').toString();
+    return aName.localeCompare(bName, 'zh-Hans-CN');
+  });
+};
+
+const buildFullAnalytics = (allCases: any[]) => {
+  const regionMap = new Map<string, { count: number; publishedCount: number; qualityTotal: number }>();
+  const userMap = new Map<string, { displayName: string; total: number; published: number; privateCount: number; qualityTotal: number }>();
+
+  for (const rawCase of allCases) {
+    const c = ensureCaseLikeFields(rawCase);
+    const quality = computeCaseQualityScore(c);
+    const region = c?.organization || '未指定组织';
+    const regionStats = regionMap.get(region) || { count: 0, publishedCount: 0, qualityTotal: 0 };
+    regionStats.count += 1;
+    if (c?.status === 'published') regionStats.publishedCount += 1;
+    regionStats.qualityTotal += quality;
+    regionMap.set(region, regionStats);
+
+    const userId = c?.ownerId || 'unknown';
+    const displayName = c?.author?.trim?.() || '未命名用户';
+    const userStats = userMap.get(userId) || { displayName, total: 0, published: 0, privateCount: 0, qualityTotal: 0 };
+    userStats.displayName = displayName;
+    userStats.total += 1;
+    if (c?.status === 'published') userStats.published += 1;
+    if (c?.isPublic !== true) userStats.privateCount += 1;
+    userStats.qualityTotal += quality;
+    userMap.set(userId, userStats);
+  }
+
+  const regionRows = Array.from(regionMap.entries()).map(([name, stats]) => ({
+    name,
+    count: stats.count,
+    publishedCount: stats.publishedCount,
+    qualityScore: stats.count > 0 ? stats.qualityTotal / stats.count : 0,
+  }));
+
+  const userRows = Array.from(userMap.entries()).map(([userId, stats]) => ({
+    userId,
+    displayName: stats.displayName,
+    total: stats.total,
+    published: stats.published,
+    privateCount: stats.privateCount,
+    publishRate: stats.total > 0 ? stats.published / stats.total : 0,
+    avgQualityScore: stats.total > 0 ? stats.qualityTotal / stats.total : 0,
+  }));
+
+  const regionCountRanking = sortByMetrics(regionRows, 'count');
+  const regionQualityRanking = sortByMetrics(regionRows, 'qualityScore');
+  const userOverview = sortByMetrics(userRows, 'count');
+  const topByCaseCount = userOverview.slice(0, 10);
+  const topByQuality = sortByMetrics(userRows, 'avgQualityScore').slice(0, 10);
+
+  return {
+    totals: {
+      cases: allCases.length,
+      published: allCases.filter((c) => c?.status === 'published').length,
+      privateCases: allCases.filter((c) => c?.isPublic !== true).length,
+      users: userRows.length,
+      regions: regionRows.length,
+    },
+    charts: {
+      regionCaseCount: regionCountRanking.map((r) => ({ name: r.name, count: r.count })),
+      regionQuality: regionQualityRanking.map((r) => ({ name: r.name, qualityScore: Number(r.qualityScore.toFixed(1)) })),
+      userTopByCaseCount: topByCaseCount.map((u) => ({ name: u.displayName, total: u.total })),
+      userTopByQuality: topByQuality.map((u) => ({ name: u.displayName, avgQualityScore: Number(u.avgQualityScore.toFixed(1)) })),
+    },
+    rankings: {
+      regionCountRanking,
+      regionQualityRanking,
+      userOverview,
+      topByCaseCount,
+      topByQuality,
+    },
+  };
+};
 
 // Ensure data directory exists (fallback)
 if (!fs.existsSync(DATA_DIR)) {
@@ -449,7 +586,7 @@ async function startServer() {
           query += ' ORDER BY updated_at DESC';
 
           const [rows]: any = await pool.query(query, params);
-          return res.json(rows.map((row: any) => row.case_data));
+          return res.json(rows.map((row: any) => ensureCaseLikeFields(row.case_data)));
         } catch (dbErr) {
           console.error('MySQL connection failed, falling back to file storage:', dbErr);
         }
@@ -461,18 +598,114 @@ async function startServer() {
 
       // If no owner_id, filter out private cases (only show public)
       if (!owner_id) {
-        const filteredCases = cases.filter((c: any) => c.isPublic === true);
+        const filteredCases = cases.filter((c: any) => c.isPublic === true).map((c: any) => ensureCaseLikeFields(c));
         return res.json(filteredCases);
       }
 
       // If owner_id exists, show public + user's private cases
       const filteredCases = cases.filter((c: any) =>
         c.isPublic === true || (c.isPublic !== true && c.ownerId === owner_id)
-      );
+      ).map((c: any) => ensureCaseLikeFields(c));
       res.json(filteredCases);
     } catch (err) {
       console.error('Error fetching cases:', err);
       res.status(500).json({ error: '读取数据失败' });
+    }
+  });
+
+  // Full analytics from all cases (including private cases)
+  app.get('/api/analytics/full', async (_req, res) => {
+    try {
+      if (pool) {
+        try {
+          const [rows]: any = await pool.query('SELECT case_data FROM cases ORDER BY updated_at DESC');
+          const allCases = rows.map((row: any) => ensureCaseLikeFields(row.case_data));
+          return res.json(buildFullAnalytics(allCases));
+        } catch (dbErr) {
+          console.error('MySQL analytics failed, falling back to file storage:', dbErr);
+        }
+      }
+
+      const raw = fs.readFileSync(DATA_FILE, 'utf8');
+      const allCases = JSON.parse(raw).map((c: any) => ensureCaseLikeFields(c));
+      res.json(buildFullAnalytics(allCases));
+    } catch (err) {
+      console.error('Error generating full analytics:', err);
+      res.status(500).json({ error: '生成全量分析数据失败' });
+    }
+  });
+
+  app.post('/api/cases/:id/like', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const visitorKey = getVisitorKey(req);
+
+      if (pool) {
+        try {
+          const [targetRows]: any = await pool.query(
+            'SELECT case_data FROM cases WHERE id = ? LIMIT 1',
+            [id]
+          );
+          if (!targetRows.length) {
+            return res.status(404).json({ success: false, message: '案例不存在' });
+          }
+
+          const targetCase = ensureCaseLikeFields(targetRows[0].case_data);
+          if (targetCase.isPublic !== true) {
+            return res.status(403).json({ success: false, message: '仅公开案例可点赞' });
+          }
+
+          if (targetCase.likedByKeys.includes(visitorKey)) {
+            return res.status(200).json({ success: true, duplicated: true, likeCount: targetCase.likeCount });
+          }
+
+          const nextCase = {
+            ...targetCase,
+            likeCount: targetCase.likeCount + 1,
+            likedByKeys: [...targetCase.likedByKeys, visitorKey],
+          };
+          await pool.query('UPDATE cases SET case_data = ?, is_public = ? WHERE id = ?', [
+            JSON.stringify(nextCase),
+            nextCase.isPublic === true,
+            id,
+          ]);
+
+          const [rows]: any = await pool.query('SELECT case_data FROM cases ORDER BY updated_at DESC');
+          const allCases = rows.map((row: any) => ensureCaseLikeFields(row.case_data));
+          io.emit('cases_updated', allCases);
+          return res.json({ success: true, duplicated: false, likeCount: nextCase.likeCount });
+        } catch (dbErr) {
+          console.error('MySQL like failed, falling back to file storage:', dbErr);
+        }
+      }
+
+      const allCases = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+      const index = allCases.findIndex((c: any) => c.id === id);
+      if (index === -1) {
+        return res.status(404).json({ success: false, message: '案例不存在' });
+      }
+
+      const targetCase = ensureCaseLikeFields(allCases[index]);
+      if (targetCase.isPublic !== true) {
+        return res.status(403).json({ success: false, message: '仅公开案例可点赞' });
+      }
+
+      if (targetCase.likedByKeys.includes(visitorKey)) {
+        return res.status(200).json({ success: true, duplicated: true, likeCount: targetCase.likeCount });
+      }
+
+      const nextCase = {
+        ...targetCase,
+        likeCount: targetCase.likeCount + 1,
+        likedByKeys: [...targetCase.likedByKeys, visitorKey],
+      };
+      allCases[index] = nextCase;
+      fs.writeFileSync(DATA_FILE, JSON.stringify(allCases, null, 2));
+      io.emit('cases_updated', allCases.map((c: any) => ensureCaseLikeFields(c)));
+      return res.json({ success: true, duplicated: false, likeCount: nextCase.likeCount });
+    } catch (err) {
+      console.error('Error liking case:', err);
+      res.status(500).json({ success: false, message: '点赞失败' });
     }
   });
 
@@ -498,10 +731,11 @@ async function startServer() {
       if (pool) {
         try {
           const [existingRows]: any = await pool.query(
-            'SELECT owner_id FROM cases WHERE id = ? LIMIT 1',
+            'SELECT owner_id, case_data FROM cases WHERE id = ? LIMIT 1',
             [incomingCase.id]
           );
           const existingOwnerId = existingRows.length > 0 ? existingRows[0].owner_id : null;
+          const existingCaseData = existingRows.length > 0 ? ensureCaseLikeFields(existingRows[0].case_data) : null;
 
           // 无论角色如何，均禁止修改他人案例
           if (existingOwnerId && existingOwnerId !== userId) {
@@ -509,7 +743,12 @@ async function startServer() {
           }
 
           const validatedOwnerId = existingOwnerId || userId;
-          const sanitizedCase = { ...incomingCase, ownerId: validatedOwnerId };
+          const sanitizedCase = ensureCaseLikeFields({
+            ...incomingCase,
+            ownerId: validatedOwnerId,
+            likeCount: existingCaseData?.likeCount ?? incomingCase?.likeCount ?? 0,
+            likedByKeys: existingCaseData?.likedByKeys ?? incomingCase?.likedByKeys ?? [],
+          });
 
           // Ensure owner exists in MySQL to satisfy FK
           const [users]: any = await pool.query('SELECT id FROM users WHERE id = ?', [validatedOwnerId]);
@@ -544,16 +783,22 @@ async function startServer() {
       const index = data.findIndex((c: any) => c.id === incomingCase.id);
       if (index !== -1) {
         const existingOwnerId = data[index]?.ownerId;
+        const existingCaseData = ensureCaseLikeFields(data[index]);
         if (existingOwnerId && existingOwnerId !== userId) {
           return res.status(403).json({ success: false, message: '无权修改他人案例' });
         }
-        data[index] = { ...incomingCase, ownerId: existingOwnerId || userId };
+        data[index] = ensureCaseLikeFields({
+          ...incomingCase,
+          ownerId: existingOwnerId || userId,
+          likeCount: existingCaseData.likeCount,
+          likedByKeys: existingCaseData.likedByKeys,
+        });
       } else {
-        data.push({ ...incomingCase, ownerId: userId });
+        data.push(ensureCaseLikeFields({ ...incomingCase, ownerId: userId }));
       }
 
       fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-      io.emit('cases_updated', data);
+      io.emit('cases_updated', data.map((c: any) => ensureCaseLikeFields(c)));
       res.json({ success: true });
     } catch (err) {
       console.error('Error saving case:', err);
@@ -667,14 +912,18 @@ async function startServer() {
     console.log(`\n  Vite + Express Server running!`);
     console.log(`  ➜  Local:   http://localhost:${PORT}`);
     
-    // Print local LAN IPs for easy access
-    const interfaces = os.networkInterfaces();
-    for (const name of Object.keys(interfaces)) {
-      for (const net of interfaces[name] || []) {
-        if (net.family === 'IPv4' && !net.internal) {
-          console.log(`  ➜  Network: http://${net.address}:${PORT}`);
+    // Print local LAN IPs for easy access (best-effort in restricted runtimes)
+    try {
+      const interfaces = os.networkInterfaces();
+      for (const name of Object.keys(interfaces)) {
+        for (const net of interfaces[name] || []) {
+          if (net.family === 'IPv4' && !net.internal) {
+            console.log(`  ➜  Network: http://${net.address}:${PORT}`);
+          }
         }
       }
+    } catch (error) {
+      console.warn('  ➜  Network addresses unavailable in current runtime');
     }
     console.log('');
   });

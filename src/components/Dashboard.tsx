@@ -1,19 +1,16 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Plus, Search, Filter, Database, LogOut, Trash2, Edit3, Eye, FileText, CheckCircle, Clock, Upload, Users } from 'lucide-react';
+import { Plus, Search, Filter, Database, Trash2, Edit3, Eye, FileText, CheckCircle, Clock, Upload, Users, Heart } from 'lucide-react';
 import { Case } from '../types';
-import { User } from '../services/apiService';
+import { FullAnalyticsData, User } from '../services/apiService';
+import { DashboardAnalytics } from './DashboardAnalytics';
 
 interface DashboardProps {
   cases: Case[];
   user: User | null;
-  analyticsData: {
-    regionCountRanking: Array<{ name: string; count: number; publishedCount: number; qualityScore: number }>;
-    regionQualityRanking: Array<{ name: string; count: number; publishedCount: number; qualityScore: number }>;
-    userOverview: Array<{ userId: string; displayName: string; total: number; published: number; privateCount: number; publishRate: number; avgQualityScore: number }>;
-    topByCaseCount: Array<{ userId: string; displayName: string; total: number; published: number; privateCount: number; publishRate: number; avgQualityScore: number }>;
-    topByQuality: Array<{ userId: string; displayName: string; total: number; published: number; privateCount: number; publishRate: number; avgQualityScore: number }>;
-  };
+  fullAnalytics: FullAnalyticsData | null;
+  analyticsLoading: boolean;
+  analyticsError: string | null;
   appName: string;
   appDescription: string;
   searchQuery: string;
@@ -22,6 +19,7 @@ interface DashboardProps {
   onEditCase: (c: Case) => void;
   onViewCanvas: (c: Case) => void;
   onDeleteCase: (id: string) => void;
+  onLikeCase: (id: string) => void;
   onLogin: () => void;
   onLogout: () => void;
   onOpenDbConfig: () => void;
@@ -31,7 +29,9 @@ interface DashboardProps {
 export const Dashboard: React.FC<DashboardProps> = ({
   cases,
   user,
-  analyticsData,
+  fullAnalytics,
+  analyticsLoading,
+  analyticsError,
   appName,
   appDescription,
   searchQuery,
@@ -40,16 +40,40 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onEditCase,
   onViewCanvas,
   onDeleteCase,
+  onLikeCase,
   onLogin,
   onLogout,
   onOpenDbConfig,
   onOpenUserManagement
 }) => {
-  const filteredCases = cases.filter(c => 
-    c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.organization.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  const { regionCountRanking, regionQualityRanking, userOverview, topByCaseCount, topByQuality } = analyticsData;
+  const [statusFilter, setStatusFilter] = React.useState<'all' | 'published' | 'draft'>('all');
+  const [organizationFilter, setOrganizationFilter] = React.useState<'all' | string>('all');
+  const [creatorFilter, setCreatorFilter] = React.useState<'all' | string>('all');
+  const [visibilityFilter, setVisibilityFilter] = React.useState<'all' | 'public' | 'private'>('all');
+
+  const creators = React.useMemo(() => {
+    const set = new Set<string>();
+    cases.forEach((c) => set.add(c.author?.trim() || '未命名用户'));
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'));
+  }, [cases]);
+
+  const filteredCases = cases.filter(c => {
+    const query = searchQuery.toLowerCase();
+    const matchQuery =
+      c.title.toLowerCase().includes(query) ||
+      c.organization.toLowerCase().includes(query) ||
+      (c.author || '').toLowerCase().includes(query);
+
+    const matchStatus = statusFilter === 'all' || c.status === statusFilter;
+    const matchOrg = organizationFilter === 'all' || c.organization === organizationFilter;
+    const creatorName = c.author?.trim() || '未命名用户';
+    const matchCreator = creatorFilter === 'all' || creatorName === creatorFilter;
+    const matchVisibility =
+      visibilityFilter === 'all' ||
+      (visibilityFilter === 'public' ? c.isPublic === true : c.isPublic !== true);
+
+    return matchQuery && matchStatus && matchOrg && matchCreator && matchVisibility;
+  });
 
   return (
     <div className="min-h-screen bg-neutral-50/50 p-6 md:p-10">
@@ -158,135 +182,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-12">
-          <div className="card-modern p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-black text-neutral-800 uppercase tracking-wider">地区案例数量排名</h3>
-              <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest">Count Rank</span>
-            </div>
-            <div className="space-y-3">
-              {regionCountRanking.length === 0 ? (
-                <p className="text-sm text-neutral-400">暂无地区数据</p>
-              ) : (
-                regionCountRanking.map((row, idx) => (
-                  <div key={row.name} className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl border border-neutral-200/60">
-                    <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-lg bg-white border border-neutral-200 flex items-center justify-center text-[10px] font-black text-neutral-500">
-                        {idx + 1}
-                      </span>
-                      <span className="text-sm font-bold text-neutral-800">{row.name}</span>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-black text-brand-600">{row.count}</p>
-                      <p className="text-[10px] text-neutral-400 font-bold uppercase">已发布 {row.publishedCount}</p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="card-modern p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-black text-neutral-800 uppercase tracking-wider">地区质量排名</h3>
-              <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest">Quality Rank</span>
-            </div>
-            <div className="space-y-3">
-              {regionQualityRanking.length === 0 ? (
-                <p className="text-sm text-neutral-400">暂无地区数据</p>
-              ) : (
-                regionQualityRanking.map((row, idx) => (
-                  <div key={row.name} className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl border border-neutral-200/60">
-                    <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-lg bg-white border border-neutral-200 flex items-center justify-center text-[10px] font-black text-neutral-500">
-                        {idx + 1}
-                      </span>
-                      <span className="text-sm font-bold text-neutral-800">{row.name}</span>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-black text-brand-600">{row.qualityScore.toFixed(1)}</p>
-                      <p className="text-[10px] text-neutral-400 font-bold uppercase">{row.count}个案例</p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-12">
-          <div className="card-modern p-6 xl:col-span-2">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-black text-neutral-800 uppercase tracking-wider">用户分析总览</h3>
-              <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest">Per User</span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-[10px] text-neutral-400 uppercase tracking-widest">
-                    <th className="py-2 pr-4">用户</th>
-                    <th className="py-2 pr-4">总案例</th>
-                    <th className="py-2 pr-4">已发布</th>
-                    <th className="py-2 pr-4">私密</th>
-                    <th className="py-2 pr-4">发布率</th>
-                    <th className="py-2">平均质量</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-100">
-                  {userOverview.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-4 text-neutral-400">暂无用户数据</td>
-                    </tr>
-                  ) : (
-                    userOverview.map((row) => (
-                      <tr key={row.userId}>
-                        <td className="py-3 pr-4 font-bold text-neutral-800">{row.displayName}</td>
-                        <td className="py-3 pr-4">{row.total}</td>
-                        <td className="py-3 pr-4">{row.published}</td>
-                        <td className="py-3 pr-4">{row.privateCount}</td>
-                        <td className="py-3 pr-4">{(row.publishRate * 100).toFixed(1)}%</td>
-                        <td className="py-3 font-bold text-brand-600">{row.avgQualityScore.toFixed(1)}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div className="card-modern p-6">
-              <h3 className="text-sm font-black text-neutral-800 uppercase tracking-wider mb-4">Top用户（案例数）</h3>
-              <div className="space-y-3">
-                {topByCaseCount.length === 0 ? (
-                  <p className="text-sm text-neutral-400">暂无数据</p>
-                ) : (
-                  topByCaseCount.map((row, idx) => (
-                    <div key={row.userId} className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-neutral-700">{idx + 1}. {row.displayName}</span>
-                      <span className="text-sm font-black text-brand-600">{row.total}</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-            <div className="card-modern p-6">
-              <h3 className="text-sm font-black text-neutral-800 uppercase tracking-wider mb-4">Top用户（质量）</h3>
-              <div className="space-y-3">
-                {topByQuality.length === 0 ? (
-                  <p className="text-sm text-neutral-400">暂无数据</p>
-                ) : (
-                  topByQuality.map((row, idx) => (
-                    <div key={row.userId} className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-neutral-700">{idx + 1}. {row.displayName}</span>
-                      <span className="text-sm font-black text-brand-600">{row.avgQualityScore.toFixed(1)}</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+        <DashboardAnalytics
+          analytics={fullAnalytics}
+          loading={analyticsLoading}
+          error={analyticsError}
+        />
 
         <div className="card-modern overflow-hidden">
           <div className="p-6 border-b border-neutral-100 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-neutral-50/30">
@@ -300,10 +200,51 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 className="input-modern pl-11"
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button className="p-2.5 bg-white border border-neutral-200 rounded-xl text-neutral-500 hover:text-brand-500 hover:border-brand-200 transition-all shadow-sm">
                 <Filter className="w-4 h-4" />
               </button>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as 'all' | 'published' | 'draft')}
+                className="px-3 py-2 bg-white border border-neutral-200 rounded-xl text-xs font-semibold text-neutral-600"
+              >
+                <option value="all">状态：全部</option>
+                <option value="published">状态：已发布</option>
+                <option value="draft">状态：草稿</option>
+              </select>
+              <select
+                value={organizationFilter}
+                onChange={(e) => setOrganizationFilter(e.target.value)}
+                className="px-3 py-2 bg-white border border-neutral-200 rounded-xl text-xs font-semibold text-neutral-600"
+              >
+                <option value="all">组织：全部</option>
+                <option value="财服总部">财服总部</option>
+                <option value="深圳分公司">深圳分公司</option>
+                <option value="上海分公司">上海分公司</option>
+                <option value="合肥分公司">合肥分公司</option>
+                <option value="成都分公司">成都分公司</option>
+                <option value="内江分公司">内江分公司</option>
+              </select>
+              <select
+                value={creatorFilter}
+                onChange={(e) => setCreatorFilter(e.target.value)}
+                className="px-3 py-2 bg-white border border-neutral-200 rounded-xl text-xs font-semibold text-neutral-600"
+              >
+                <option value="all">创建人：全部</option>
+                {creators.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+              <select
+                value={visibilityFilter}
+                onChange={(e) => setVisibilityFilter(e.target.value as 'all' | 'public' | 'private')}
+                className="px-3 py-2 bg-white border border-neutral-200 rounded-xl text-xs font-semibold text-neutral-600"
+              >
+                <option value="all">可见性：全部</option>
+                <option value="public">公开</option>
+                <option value="private">私密</option>
+              </select>
             </div>
           </div>
 
@@ -313,6 +254,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <tr className="bg-neutral-50/50">
                   <th className="px-8 py-4 text-left text-[10px] font-black text-neutral-400 uppercase tracking-[0.15em]">案例名称</th>
                   <th className="px-8 py-4 text-left text-[10px] font-black text-neutral-400 uppercase tracking-[0.15em]">组织</th>
+                  <th className="px-8 py-4 text-left text-[10px] font-black text-neutral-400 uppercase tracking-[0.15em]">创建人</th>
                   <th className="px-8 py-4 text-left text-[10px] font-black text-neutral-400 uppercase tracking-[0.15em]">状态</th>
                   <th className="px-8 py-4 text-left text-[10px] font-black text-neutral-400 uppercase tracking-[0.15em]">最后更新</th>
                   <th className="px-8 py-4 text-right text-[10px] font-black text-neutral-400 uppercase tracking-[0.15em]">操作</th>
@@ -342,6 +284,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         {c.organization}
                       </span>
                     </td>
+                    <td className="px-8 py-6 text-xs text-neutral-600 font-bold">
+                      {c.author?.trim() || '未命名用户'}
+                    </td>
                     <td className="px-8 py-6">
                       <div className="flex items-center gap-2">
                         {c.status === 'published' ? (
@@ -369,6 +314,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         >
                           <Eye className="w-4.5 h-4.5" />
                         </button>
+                        {c.isPublic === true && (
+                          <button
+                            onClick={() => onLikeCase(c.id)}
+                            className="inline-flex items-center gap-1.5 p-2.5 text-neutral-400 hover:text-pink-500 hover:bg-pink-50 rounded-xl transition-all"
+                            title="点赞公开案例"
+                          >
+                            <Heart className="w-4.5 h-4.5" />
+                            <span className="text-[10px] font-bold">{c.likeCount ?? 0}</span>
+                          </button>
+                        )}
                         {/* 编辑按钮：仅显示给案例所有者 */}
                         {user?.uid === c.ownerId && (
                           <button
