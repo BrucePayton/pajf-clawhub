@@ -7,6 +7,13 @@ import { User } from '../services/apiService';
 interface DashboardProps {
   cases: Case[];
   user: User | null;
+  analyticsData: {
+    regionCountRanking: Array<{ name: string; count: number; publishedCount: number; qualityScore: number }>;
+    regionQualityRanking: Array<{ name: string; count: number; publishedCount: number; qualityScore: number }>;
+    userOverview: Array<{ userId: string; displayName: string; total: number; published: number; privateCount: number; publishRate: number; avgQualityScore: number }>;
+    topByCaseCount: Array<{ userId: string; displayName: string; total: number; published: number; privateCount: number; publishRate: number; avgQualityScore: number }>;
+    topByQuality: Array<{ userId: string; displayName: string; total: number; published: number; privateCount: number; publishRate: number; avgQualityScore: number }>;
+  };
   appName: string;
   appDescription: string;
   searchQuery: string;
@@ -24,6 +31,7 @@ interface DashboardProps {
 export const Dashboard: React.FC<DashboardProps> = ({
   cases,
   user,
+  analyticsData,
   appName,
   appDescription,
   searchQuery,
@@ -41,6 +49,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.organization.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  const { regionCountRanking, regionQualityRanking, userOverview, topByCaseCount, topByQuality } = analyticsData;
 
   return (
     <div className="min-h-screen bg-neutral-50/50 p-6 md:p-10">
@@ -149,6 +158,136 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-12">
+          <div className="card-modern p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-black text-neutral-800 uppercase tracking-wider">地区案例数量排名</h3>
+              <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest">Count Rank</span>
+            </div>
+            <div className="space-y-3">
+              {regionCountRanking.length === 0 ? (
+                <p className="text-sm text-neutral-400">暂无地区数据</p>
+              ) : (
+                regionCountRanking.map((row, idx) => (
+                  <div key={row.name} className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl border border-neutral-200/60">
+                    <div className="flex items-center gap-3">
+                      <span className="w-6 h-6 rounded-lg bg-white border border-neutral-200 flex items-center justify-center text-[10px] font-black text-neutral-500">
+                        {idx + 1}
+                      </span>
+                      <span className="text-sm font-bold text-neutral-800">{row.name}</span>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-black text-brand-600">{row.count}</p>
+                      <p className="text-[10px] text-neutral-400 font-bold uppercase">已发布 {row.publishedCount}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="card-modern p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-black text-neutral-800 uppercase tracking-wider">地区质量排名</h3>
+              <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest">Quality Rank</span>
+            </div>
+            <div className="space-y-3">
+              {regionQualityRanking.length === 0 ? (
+                <p className="text-sm text-neutral-400">暂无地区数据</p>
+              ) : (
+                regionQualityRanking.map((row, idx) => (
+                  <div key={row.name} className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl border border-neutral-200/60">
+                    <div className="flex items-center gap-3">
+                      <span className="w-6 h-6 rounded-lg bg-white border border-neutral-200 flex items-center justify-center text-[10px] font-black text-neutral-500">
+                        {idx + 1}
+                      </span>
+                      <span className="text-sm font-bold text-neutral-800">{row.name}</span>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-black text-brand-600">{row.qualityScore.toFixed(1)}</p>
+                      <p className="text-[10px] text-neutral-400 font-bold uppercase">{row.count}个案例</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-12">
+          <div className="card-modern p-6 xl:col-span-2">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-black text-neutral-800 uppercase tracking-wider">用户分析总览</h3>
+              <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest">Per User</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-[10px] text-neutral-400 uppercase tracking-widest">
+                    <th className="py-2 pr-4">用户</th>
+                    <th className="py-2 pr-4">总案例</th>
+                    <th className="py-2 pr-4">已发布</th>
+                    <th className="py-2 pr-4">私密</th>
+                    <th className="py-2 pr-4">发布率</th>
+                    <th className="py-2">平均质量</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100">
+                  {userOverview.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-4 text-neutral-400">暂无用户数据</td>
+                    </tr>
+                  ) : (
+                    userOverview.map((row) => (
+                      <tr key={row.userId}>
+                        <td className="py-3 pr-4 font-bold text-neutral-800">{row.displayName}</td>
+                        <td className="py-3 pr-4">{row.total}</td>
+                        <td className="py-3 pr-4">{row.published}</td>
+                        <td className="py-3 pr-4">{row.privateCount}</td>
+                        <td className="py-3 pr-4">{(row.publishRate * 100).toFixed(1)}%</td>
+                        <td className="py-3 font-bold text-brand-600">{row.avgQualityScore.toFixed(1)}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="card-modern p-6">
+              <h3 className="text-sm font-black text-neutral-800 uppercase tracking-wider mb-4">Top用户（案例数）</h3>
+              <div className="space-y-3">
+                {topByCaseCount.length === 0 ? (
+                  <p className="text-sm text-neutral-400">暂无数据</p>
+                ) : (
+                  topByCaseCount.map((row, idx) => (
+                    <div key={row.userId} className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-neutral-700">{idx + 1}. {row.displayName}</span>
+                      <span className="text-sm font-black text-brand-600">{row.total}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+            <div className="card-modern p-6">
+              <h3 className="text-sm font-black text-neutral-800 uppercase tracking-wider mb-4">Top用户（质量）</h3>
+              <div className="space-y-3">
+                {topByQuality.length === 0 ? (
+                  <p className="text-sm text-neutral-400">暂无数据</p>
+                ) : (
+                  topByQuality.map((row, idx) => (
+                    <div key={row.userId} className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-neutral-700">{idx + 1}. {row.displayName}</span>
+                      <span className="text-sm font-black text-brand-600">{row.avgQualityScore.toFixed(1)}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="card-modern overflow-hidden">
           <div className="p-6 border-b border-neutral-100 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-neutral-50/30">
             <div className="relative w-full md:w-96 group">
@@ -240,7 +379,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             <Edit3 className="w-4.5 h-4.5" />
                           </button>
                         )}
-                        {user?.uid === c.ownerId && c.status === 'draft' && (
+                        {user?.uid === c.ownerId && c.isPublic !== true && (
                           <button
                             onClick={() => onDeleteCase(c.id)}
                             className="p-2.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"

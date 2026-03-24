@@ -583,13 +583,13 @@ async function startServer() {
 
           const targetOwnerId = targetRows[0].owner_id;
           const targetCaseData = targetRows[0].case_data;
-          const targetStatus = targetCaseData?.status;
+          const targetIsPublic = targetCaseData?.isPublic === true;
 
           if (!targetOwnerId || targetOwnerId !== userId) {
             return res.status(403).json({ success: false, message: '无权删除他人案例' });
           }
-          if (targetStatus !== 'draft') {
-            return res.status(403).json({ success: false, message: '仅允许删除未发布案例' });
+          if (targetIsPublic) {
+            return res.status(403).json({ success: false, message: '仅允许删除自己私密案例' });
           }
 
           await pool.query('DELETE FROM cases WHERE id = ?', [id]);
@@ -610,8 +610,8 @@ async function startServer() {
       if (!targetCase.ownerId || targetCase.ownerId !== userId) {
         return res.status(403).json({ success: false, message: '无权删除他人案例' });
       }
-      if (targetCase.status !== 'draft') {
-        return res.status(403).json({ success: false, message: '仅允许删除未发布案例' });
+      if (targetCase.isPublic === true) {
+        return res.status(403).json({ success: false, message: '仅允许删除自己私密案例' });
       }
 
       const filtered = data.filter((c: any) => c.id !== id);

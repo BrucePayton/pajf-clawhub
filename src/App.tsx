@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useCallback, Component } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Component } from 'react';
 import { 
   Plus, 
   Trash2, 
@@ -184,6 +184,125 @@ const createNewCase = (): Case => ({
   },
 });
 
+type RegionAnalyticsRow = {
+  name: string;
+  count: number;
+  publishedCount: number;
+  qualityScore: number;
+};
+
+type UserAnalyticsRow = {
+  userId: string;
+  displayName: string;
+  total: number;
+  published: number;
+  privateCount: number;
+  publishRate: number;
+  avgQualityScore: number;
+};
+
+const computeCompleteness = (caseData: Case): number => {
+  const steps = caseData.implementation?.steps ?? [];
+  const metrics = caseData.businessValue?.metrics ?? [];
+  const roadmap = caseData.roadmap?.items ?? [];
+
+  const validSteps = steps.filter((s) => !!s.title?.trim() && !!s.description?.trim()).length;
+  const validMetrics = metrics.filter((m) => !!m.label?.trim() && !!m.value?.trim()).length;
+  const validRoadmap = roadmap.filter((r) => !!r.task?.trim() && !!r.content?.trim()).length;
+
+  const stepScore = steps.length > 0 ? validSteps / steps.length : 0;
+  const metricScore = metrics.length > 0 ? validMetrics / metrics.length : 0;
+  const roadmapScore = roadmap.length > 0 ? validRoadmap / roadmap.length : 0;
+
+  // Equal-weighted section completeness
+  return (stepScore + metricScore + roadmapScore) / 3;
+};
+
+const computeCaseQualityScore = (caseData: Case): number => {
+  const publishedRate = caseData.status === 'published' ? 1 : 0;
+  const normalizedVersion = Math.min((caseData.version ?? 0) / 3, 1);
+  const completeness = computeCompleteness(caseData);
+
+  // Weighted score: publish rate 45%, version 20%, completeness 35%
+  return (publishedRate * 0.45 + normalizedVersion * 0.2 + completeness * 0.35) * 100;
+};
+
+const sortByPrimaryMetrics = <T extends { name?: string; displayName?: string; count?: number; qualityScore?: number; avgQualityScore?: number }>(
+  rows: T[],
+  metricKey: 'count' | 'qualityScore' | 'avgQualityScore'
+) => {
+  return [...rows].sort((a, b) => {
+    const aMetric = Number(a[metricKey] ?? 0);
+    const bMetric = Number(b[metricKey] ?? 0);
+    if (bMetric !== aMetric) return bMetric - aMetric;
+
+    const aCount = Number(a.count ?? 0);
+    const bCount = Number(b.count ?? 0);
+    if (bCount !== aCount) return bCount - aCount;
+
+    const aName = (a.name || a.displayName || '').toString();
+    const bName = (b.name || b.displayName || '').toString();
+    return aName.localeCompare(bName, 'zh-Hans-CN');
+  });
+};
+
+const buildDashboardAnalytics = (cases: Case[]) => {
+  const regionMap = new Map<string, { count: number; publishedCount: number; qualityTotal: number }>();
+  const userMap = new Map<string, { displayName: string; total: number; published: number; privateCount: number; qualityTotal: number }>();
+
+  for (const c of cases) {
+    const quality = computeCaseQualityScore(c);
+    const region = c.organization || '未指定组织';
+
+    const regionStats = regionMap.get(region) || { count: 0, publishedCount: 0, qualityTotal: 0 };
+    regionStats.count += 1;
+    if (c.status === 'published') regionStats.publishedCount += 1;
+    regionStats.qualityTotal += quality;
+    regionMap.set(region, regionStats);
+
+    const userId = c.ownerId || 'unknown';
+    const displayName = c.author?.trim() || '未命名用户';
+    const userStats = userMap.get(userId) || { displayName, total: 0, published: 0, privateCount: 0, qualityTotal: 0 };
+    userStats.displayName = displayName;
+    userStats.total += 1;
+    if (c.status === 'published') userStats.published += 1;
+    if (c.isPublic !== true) userStats.privateCount += 1;
+    userStats.qualityTotal += quality;
+    userMap.set(userId, userStats);
+  }
+
+  const regionRows: RegionAnalyticsRow[] = Array.from(regionMap.entries()).map(([name, stats]) => ({
+    name,
+    count: stats.count,
+    publishedCount: stats.publishedCount,
+    qualityScore: stats.count > 0 ? stats.qualityTotal / stats.count : 0,
+  }));
+
+  const userRows: UserAnalyticsRow[] = Array.from(userMap.entries()).map(([userId, stats]) => ({
+    userId,
+    displayName: stats.displayName,
+    total: stats.total,
+    published: stats.published,
+    privateCount: stats.privateCount,
+    publishRate: stats.total > 0 ? stats.published / stats.total : 0,
+    avgQualityScore: stats.total > 0 ? stats.qualityTotal / stats.total : 0,
+  }));
+
+  const regionCountRanking = sortByPrimaryMetrics(regionRows, 'count');
+  const regionQualityRanking = sortByPrimaryMetrics(regionRows, 'qualityScore');
+  const userOverview = sortByPrimaryMetrics(userRows, 'count');
+  const topByCaseCount = userOverview.slice(0, 5);
+  const topByQuality = sortByPrimaryMetrics(userRows, 'avgQualityScore').slice(0, 5);
+
+  return {
+    regionCountRanking,
+    regionQualityRanking,
+    userOverview,
+    topByCaseCount,
+    topByQuality,
+  };
+};
+
 export default function App() {
   const [cases, setCases] = useState<Case[]>([]);
   const [activeView, setActiveView] = useState<'dashboard' | 'editor' | 'canvas'>('dashboard');
@@ -208,6 +327,8 @@ export default function App() {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
+
+  const dashboardAnalytics = useMemo(() => buildDashboardAnalytics(cases), [cases]);
 
   // Auth Persistence
   useEffect(() => {
@@ -324,8 +445,8 @@ export default function App() {
       return;
     }
 
-    if (target.status !== 'draft') {
-      showToast('仅允许删除未发布（草稿）案例', 'error');
+    if (target.isPublic === true) {
+      showToast('仅允许删除自己私密案例', 'error');
       return;
     }
 
@@ -340,8 +461,8 @@ export default function App() {
         setConfirmDelete(null);
         return;
       }
-      if (!target || target.ownerId !== user.uid || target.status !== 'draft') {
-        showToast('仅允许删除自己未发布的案例', 'error');
+      if (!target || target.ownerId !== user.uid || target.isPublic === true) {
+        showToast('仅允许删除自己私密案例', 'error');
         setConfirmDelete(null);
         return;
       }
@@ -358,7 +479,7 @@ export default function App() {
         if (error?.message === 'CASE_UNAUTHORIZED') {
           showToast('请先登录后再删除案例', 'error');
         } else if (error?.message === 'CASE_DELETE_FORBIDDEN') {
-          showToast('仅允许删除自己未发布的案例', 'error');
+          showToast('仅允许删除自己私密案例', 'error');
         } else {
           showToast('删除失败，请检查网络或权限', 'error');
         }
@@ -530,6 +651,7 @@ export default function App() {
         <Dashboard
           cases={cases}
           user={user}
+          analyticsData={dashboardAnalytics}
           appName={metadata.name}
           appDescription={metadata.description}
           searchQuery={searchQuery}
