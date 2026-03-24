@@ -1,18 +1,14 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Plus, Search, Filter, Database, Trash2, Edit3, Eye, FileText, CheckCircle, Clock, Upload, Users, Heart } from 'lucide-react';
+import { Plus, Search, Filter, Database, Trash2, Edit3, Eye, FileText, CheckCircle, Clock, Upload, Users, Heart, ChartNoAxesCombined } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Case } from '../types';
-import { FullAnalyticsData, User } from '../services/apiService';
-import { DashboardAnalytics } from './DashboardAnalytics';
+import { User } from '../services/apiService';
 import { DashboardModule } from './DashboardModule';
 
 interface DashboardProps {
   cases: Case[];
   user: User | null;
-  fullAnalytics: FullAnalyticsData | null;
-  analyticsLoading: boolean;
-  analyticsError: string | null;
   appName: string;
   appDescription: string;
   searchQuery: string;
@@ -22,6 +18,7 @@ interface DashboardProps {
   onViewCanvas: (c: Case) => void;
   onDeleteCase: (id: string) => void;
   onLikeCase: (id: string) => void;
+  onOpenAnalytics: () => void;
   onLogin: () => void;
   onLogout: () => void;
   onOpenDbConfig: () => void;
@@ -31,9 +28,6 @@ interface DashboardProps {
 export const Dashboard: React.FC<DashboardProps> = ({
   cases,
   user,
-  fullAnalytics,
-  analyticsLoading,
-  analyticsError,
   appName,
   appDescription,
   searchQuery,
@@ -43,6 +37,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onViewCanvas,
   onDeleteCase,
   onLikeCase,
+  onOpenAnalytics,
   onLogin,
   onLogout,
   onOpenDbConfig,
@@ -195,15 +190,31 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <Plus className="w-5 h-5" />
                   新建案例
                 </button>
+                <button
+                  onClick={onOpenAnalytics}
+                  className="btn-secondary"
+                >
+                  <ChartNoAxesCombined className="w-5 h-5 text-brand-500" />
+                  分析页面
+                </button>
               </div>
             ) : (
-              <button 
-                onClick={onLogin}
-                className="btn-secondary"
-              >
-                <Upload className="w-5 h-5 text-brand-500" />
-                登录以开始
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={onOpenAnalytics}
+                  className="btn-secondary"
+                >
+                  <ChartNoAxesCombined className="w-5 h-5 text-brand-500" />
+                  分析页面
+                </button>
+                <button 
+                  onClick={onLogin}
+                  className="btn-secondary"
+                >
+                  <Upload className="w-5 h-5 text-brand-500" />
+                  登录以开始
+                </button>
+              </div>
             )}
           </div>
         </header>
@@ -250,19 +261,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </p>
             </div>
           </div>
-        </DashboardModule>
-
-        <div className="mb-12" />
-
-        <DashboardModule
-          title="全量分析"
-          subtitle="来源于数据库全量案例（含私密）"
-        >
-          <DashboardAnalytics
-            analytics={fullAnalytics}
-            loading={analyticsLoading}
-            error={analyticsError}
-          />
         </DashboardModule>
 
         <div className="mb-12" />

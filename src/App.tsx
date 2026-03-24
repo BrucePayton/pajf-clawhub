@@ -39,6 +39,7 @@ import { Dashboard } from './components/Dashboard';
 import { Editor } from './components/Editor';
 import { CanvasView } from './components/CanvasView';
 import { UserManagementModal } from './components/UserManagementModal';
+import { AnalyticsPage } from './components/AnalyticsPage';
 import metadata from '../metadata.json';
 
 // Helper to generate IDs safely in non-secure contexts (HTTP/IP)
@@ -48,101 +49,6 @@ const generateId = () => {
   }
   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 };
-
-// Placeholder base64 images for offline use (Grayish-white)
-const PLACEHOLDER_IMAGES = {
-  step1: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN88f8/AAb/A/8QG8oKAAAAAElFTkSuQmCC',
-  step2: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN88f8/AAb/A/8QG8oKAAAAAElFTkSuQmCC',
-  step3: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN88f8/AAb/A/8QG8oKAAAAAElFTkSuQmCC',
-};
-
-// Initial sample cases for the library
-const INITIAL_CASES: Case[] = [
-  {
-    id: 'sample-1',
-    title: 'OpenClaw 自动化报表生成案例',
-    subtitle: '通过 OpenClaw 实现财务月报自动汇总与分发，效率提升 90%',
-    status: 'published',
-    version: 1.0,
-    lastModified: Date.now(),
-    author: '张三',
-    umNumber: 'UM123456',
-    team: '财务数智化小组',
-    organization: '财服总部',
-    ownerId: 'system',
-    challenges: {
-      background: '财务部每月需从 5 个不同系统导出数据，手动汇总成 20 份分公司报表，耗时耗力且易出错。',
-      painPoints: [
-        '跨系统数据导出繁琐，需多次登录验证',
-        '手动 Excel 汇总计算量大，公式维护困难',
-        '报表分发依赖邮件，无法实时跟踪阅读情况'
-      ],
-      objectives: '实现报表从数据抓取、清洗、汇总到分发的全流程自动化。',
-    },
-    implementation: {
-      steps: [
-        { id: 's1', title: '多系统自动登录与导出', description: '利用 OpenClaw 模拟登录 ERP、OA 等系统，定时自动下载原始数据文件。', imageUrl: PLACEHOLDER_IMAGES.step1 },
-        { id: 's2', title: '数据清洗与逻辑计算', description: '编写 Python 脚本集成至 OpenClaw，自动完成数据去重、格式转换及多维度汇总。', imageUrl: PLACEHOLDER_IMAGES.step2 },
-        { id: 's3', title: '报表自动分发', description: '集成企业微信机器人，将生成的 PDF 报表自动推送至各分公司负责人。', imageUrl: PLACEHOLDER_IMAGES.step3 },
-      ],
-    },
-    businessValue: {
-      metrics: [
-        { id: 'm1', label: '效率提升', value: '92%', subtext: '原流程 2 天 → 现流程 1.5 小时', icon: 'trending-up' },
-        { id: 'm2', label: '准确率', value: '100%', subtext: '消除人为计算误差，数据一致性大幅提升', icon: 'zap' },
-      ],
-      footerNote: '注：该案例已在总部财务部稳定运行 3 个月',
-    },
-    roadmap: {
-      items: [
-        { id: 'r1', task: '增加异常监控', content: '对系统登录失败等异常情况增加自动重试与告警机制', date: '2026.04' },
-        { id: 'r2', task: '可视化看板', content: '将汇总数据实时推送至 BI 看板，实现动态监控', date: '2026.05' },
-      ],
-    },
-  },
-  {
-    id: 'sample-2',
-    title: '智能客服工单自动分类与分配',
-    subtitle: '利用 OpenClaw 结合 AI 模型，实现客服工单秒级响应与精准分派',
-    status: 'published',
-    version: 1.0,
-    lastModified: Date.now(),
-    author: '李四',
-    umNumber: 'UM654321',
-    team: '客户服务优化团队',
-    organization: '深圳分公司',
-    ownerId: 'system',
-    challenges: {
-      background: '客服中心每日接收数千条工单，人工分类耗时约 2 分钟/条，且分类标准不统一。',
-      painPoints: [
-        '工单积压严重，高峰期响应延迟超过 4 小时',
-        '人工分类主观性强，导致分派错误率约 15%',
-        '无法快速识别紧急工单，存在服务风险'
-      ],
-      objectives: '实现工单自动分类、关键词提取及根据业务逻辑自动分派。',
-    },
-    implementation: {
-      steps: [
-        { id: 's1', title: '工单实时抓取', description: 'OpenClaw 实时监听工单系统接口，获取新进工单内容。', imageUrl: PLACEHOLDER_IMAGES.step1 },
-        { id: 's2', title: 'AI 智能分类', description: '调用内置 NLP 模型对工单进行意图识别与分类。', imageUrl: PLACEHOLDER_IMAGES.step2 },
-        { id: 's3', title: '精准分派', description: '根据分类结果自动将工单流转至对应业务组，并标记优先级。', imageUrl: PLACEHOLDER_IMAGES.step3 },
-      ],
-    },
-    businessValue: {
-      metrics: [
-        { id: 'm1', label: '响应时间', value: '-95%', subtext: '从 4 小时缩短至 5 分钟内', icon: 'clock' },
-        { id: 'm2', label: '分派准确率', value: '98%', subtext: '远高于人工分类的 85%', icon: 'trending-up' },
-      ],
-      footerNote: '注：该方案有效缓解了深圳分公司高峰期客服压力',
-    },
-    roadmap: {
-      items: [
-        { id: 'r1', task: '多语言支持', content: '增加对粤语等方言工单的识别能力', date: '2026.06' },
-        { id: 'r2', task: '自动回复集成', content: '对常见简单咨询实现 AI 自动回复', date: '2026.08' },
-      ],
-    },
-  }
-];
 
 // Default initial case template
 const createNewCase = (): Case => ({
@@ -186,7 +92,7 @@ const createNewCase = (): Case => ({
 
 export default function App() {
   const [cases, setCases] = useState<Case[]>([]);
-  const [activeView, setActiveView] = useState<'dashboard' | 'editor' | 'canvas'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'analytics' | 'editor' | 'canvas'>('dashboard');
   const [currentCase, setCurrentCase] = useState<Case | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -297,7 +203,7 @@ export default function App() {
   }, [isAuthReady, user, loadFullAnalytics, refreshCasesOnce, ensureBootstrapAndLoad]);
 
   useEffect(() => {
-    if (activeView === 'dashboard') {
+    if (activeView === 'dashboard' || activeView === 'analytics') {
       loadFullAnalytics();
     }
   }, [activeView, loadFullAnalytics]);
@@ -570,9 +476,6 @@ export default function App() {
         <Dashboard
           cases={cases}
           user={user}
-          fullAnalytics={fullAnalytics}
-          analyticsLoading={analyticsLoading}
-          analyticsError={analyticsError}
           appName={metadata.name}
           appDescription={metadata.description}
           searchQuery={searchQuery}
@@ -592,10 +495,20 @@ export default function App() {
           }}
           onDeleteCase={handleDelete}
           onLikeCase={handleLikeCase}
+          onOpenAnalytics={() => setActiveView('analytics')}
           onLogin={() => setShowLoginModal(true)}
           onLogout={handleLogout}
           onOpenDbConfig={() => setShowDbConfig(true)}
           onOpenUserManagement={() => setShowUserManagement(true)}
+        />
+      )}
+
+      {activeView === 'analytics' && (
+        <AnalyticsPage
+          analytics={fullAnalytics}
+          loading={analyticsLoading}
+          error={analyticsError}
+          onBack={() => setActiveView('dashboard')}
         />
       )}
 
