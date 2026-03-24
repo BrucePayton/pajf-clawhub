@@ -43,7 +43,7 @@ import { DbConfigModal } from './components/DbConfigModal';
 import { Dashboard } from './components/Dashboard';
 import { Editor } from './components/Editor';
 import { CanvasView } from './components/CanvasView';
-import { UserManagementModal } from './components/UserManagementModal';
+import { UserManagementPanel } from './components/UserManagementPanel';
 import metadata from '../metadata.json';
 
 // Helper to generate IDs safely in non-secure contexts (HTTP/IP)
@@ -191,7 +191,6 @@ export default function App() {
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showDbConfig, setShowDbConfig] = useState(false);
-  const [showUserManagement, setShowUserManagement] = useState(false);
   const [menuKey, setMenuKey] = useState<MenuKey>('overview');
   const [dbConfig, setDbConfig] = useState<DbConfig>({
     host: 'localhost',
@@ -285,9 +284,6 @@ export default function App() {
   useEffect(() => {
     if (!isAuthReady) return;
     ensureBootstrapAndLoad(user?.uid, mapMenuToCaseType(menuKey));
-    if (menuKey === 'user_management') {
-      setShowUserManagement(true);
-    }
   }, [menuKey, isAuthReady, user, ensureBootstrapAndLoad]);
 
   // Load DB Config
@@ -486,19 +482,19 @@ export default function App() {
   };
 
   const handleLogin = async (u: string, p: string) => {
-    const loggedInUser = await apiService.login(u, p);
-    if (loggedInUser) {
-      setUser(loggedInUser);
-      localStorage.setItem('internal_user', JSON.stringify(loggedInUser));
+    const result = await apiService.login(u, p);
+    if (result.success && result.user) {
+      setUser(result.user);
+      localStorage.setItem('internal_user', JSON.stringify(result.user));
       setShowLoginModal(false);
       showToast('登录成功');
 
       // Reload cases with new user context after a short delay
       setTimeout(() => {
-        refreshCasesOnce(loggedInUser.uid, mapMenuToCaseType(menuKey));
+        refreshCasesOnce(result.user?.uid, mapMenuToCaseType(menuKey));
       }, 500);
     } else {
-      showToast('用户名或密码错误', 'error');
+      showToast(result.message || '用户名或密码错误', 'error');
     }
   };
 
@@ -553,6 +549,52 @@ export default function App() {
     }
   };
 
+  const moduleMeta: Record<MenuKey, { pageTitle: string; pageSubtitle: string; emptyTitle: string; emptySubtitle: string; showOverviewInsights?: boolean }> = {
+    overview: {
+      pageTitle: '总览',
+      pageSubtitle: '从平台维度查看案例规模、组织表现和整体排名。',
+      emptyTitle: '当前平台暂无案例数据',
+      emptySubtitle: '请先创建或初始化案例后查看总览分析',
+      showOverviewInsights: true,
+    },
+    openclaw_app: {
+      pageTitle: 'OpenClaw应用案例',
+      pageSubtitle: '统一展示 OpenClaw 类型案例，聚焦步骤方法与实施效果。',
+      emptyTitle: '当前暂无 OpenClaw 应用案例',
+      emptySubtitle: '可在本模块中创建并沉淀新的 OpenClaw 案例',
+    },
+    tool_app: {
+      pageTitle: '小工具应用案例',
+      pageSubtitle: '统一展示小工具案例，强调设计思路、使用效果与复用价值。',
+      emptyTitle: '当前暂无小工具应用案例',
+      emptySubtitle: '可在本模块中创建并沉淀新的小工具案例',
+    },
+    agent_app: {
+      pageTitle: 'Agent案例',
+      pageSubtitle: '统一展示 Agent 案例，强调步骤方法、关键点与可复用策略。',
+      emptyTitle: '当前暂无 Agent 案例',
+      emptySubtitle: '可在本模块中创建并沉淀新的 Agent 案例',
+    },
+    rpa_app: {
+      pageTitle: 'RPA案例',
+      pageSubtitle: '统一展示 RPA 案例，强调上下游系统关联与自动化步骤。',
+      emptyTitle: '当前暂无 RPA 案例',
+      emptySubtitle: '可在本模块中创建并沉淀新的 RPA 案例',
+    },
+    dashboard_app: {
+      pageTitle: '看板案例',
+      pageSubtitle: '统一展示看板案例，强调数据维度、指标分析与用法说明。',
+      emptyTitle: '当前暂无看板案例',
+      emptySubtitle: '可在本模块中创建并沉淀新的看板案例',
+    },
+    user_management: {
+      pageTitle: '用户管理',
+      pageSubtitle: '在右侧主区域中统一管理平台账号、角色与新增用户。',
+      emptyTitle: '',
+      emptySubtitle: '',
+    },
+  };
+
   const menuItems: Array<{ key: MenuKey; label: string; icon: React.ReactNode }> = [
     { key: 'overview', label: '总览', icon: <LayoutDashboard className="w-4 h-4" /> },
     { key: 'openclaw_app', label: 'OpenClaw应用案例', icon: <Rocket className="w-4 h-4" /> },
@@ -563,8 +605,7 @@ export default function App() {
     { key: 'user_management', label: '用户管理', icon: <Users className="w-4 h-4" /> },
   ];
 
-  const activeCaseType = mapMenuToCaseType(menuKey);
-  const showDashboard = menuKey === 'overview' || !!activeCaseType;
+  const currentModuleMeta = moduleMeta[menuKey];
 
   return (
     <div className="min-h-screen bg-neutral-50 font-sans text-neutral-900">
@@ -592,36 +633,50 @@ export default function App() {
             </nav>
           </aside>
           <main className="flex-1">
-            {showDashboard ? (
-        <Dashboard
-          cases={cases}
-          user={user}
-          appName={metadata.name}
-          appDescription={metadata.description}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          onNewCase={handleCreate}
-          onEditCase={(c) => {
-            if (!user || c.ownerId !== user.uid) {
-              showToast('无权修改他人案例', 'error');
-              return;
-            }
-            setCurrentCase(c);
-            setActiveView('editor');
-          }}
-          onViewCanvas={(c) => {
-            setCurrentCase(c);
-            setActiveView('canvas');
-          }}
-          onDeleteCase={handleDelete}
-          onLikeCase={handleLikeCase}
-          onLogin={() => setShowLoginModal(true)}
-          onLogout={handleLogout}
-          onOpenDbConfig={() => setShowDbConfig(true)}
-          onOpenUserManagement={() => setShowUserManagement(true)}
-        />
+            {menuKey === 'user_management' ? (
+              <div className="p-6 md:p-10">
+                <div className="max-w-7xl mx-auto">
+                  <div className="mb-8">
+                    <p className="text-neutral-400 font-bold text-[10px] uppercase tracking-[0.2em]">{metadata.name}</p>
+                    <h1 className="text-3xl font-black text-neutral-900 tracking-tight">{currentModuleMeta.pageTitle}</h1>
+                    <p className="text-neutral-500 text-sm mt-1">{currentModuleMeta.pageSubtitle}</p>
+                  </div>
+                  <UserManagementPanel />
+                </div>
+              </div>
             ) : (
-              <div className="p-10 text-sm text-neutral-500">该模块即将上线，当前暂无可展示数据。</div>
+              <Dashboard
+                cases={cases}
+                user={user}
+                appName={metadata.name}
+                appDescription={metadata.description}
+                pageTitle={currentModuleMeta.pageTitle}
+                pageSubtitle={currentModuleMeta.pageSubtitle}
+                emptyTitle={currentModuleMeta.emptyTitle}
+                emptySubtitle={currentModuleMeta.emptySubtitle}
+                showOverviewInsights={currentModuleMeta.showOverviewInsights}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                onNewCase={handleCreate}
+                onEditCase={(c) => {
+                  if (!user || c.ownerId !== user.uid) {
+                    showToast('无权修改他人案例', 'error');
+                    return;
+                  }
+                  setCurrentCase(c);
+                  setActiveView('editor');
+                }}
+                onViewCanvas={(c) => {
+                  setCurrentCase(c);
+                  setActiveView('canvas');
+                }}
+                onDeleteCase={handleDelete}
+                onLikeCase={handleLikeCase}
+                onLogin={() => setShowLoginModal(true)}
+                onLogout={handleLogout}
+                onOpenDbConfig={() => setShowDbConfig(true)}
+                onOpenUserManagement={() => setMenuKey('user_management')}
+              />
             )}
           </main>
         </div>
@@ -632,7 +687,7 @@ export default function App() {
           caseData={currentCase} 
           setCaseData={setCurrentCase}
           onBack={async () => {
-            await refreshCasesOnce(user?.uid);
+            await refreshCasesOnce(user?.uid, mapMenuToCaseType(menuKey));
             setActiveView('dashboard');
           }}
           onSave={handleSave}
@@ -685,13 +740,6 @@ export default function App() {
             onSave={handleSaveDbConfig}
             onReset={handleResetDbConfig}
             onTest={handleTestDbConfig}
-          />
-        )}
-
-        {showUserManagement && (
-          <UserManagementModal
-            isOpen={showUserManagement}
-            onClose={() => setShowUserManagement(false)}
           />
         )}
       </AnimatePresence>

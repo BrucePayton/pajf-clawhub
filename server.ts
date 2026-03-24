@@ -161,7 +161,14 @@ async function initDb() {
     ALTER TABLE cases
     ADD COLUMN IF NOT EXISTS case_type VARCHAR(64) NOT NULL DEFAULT 'openclaw_app'
   `);
-  await pool.query(`INSERT IGNORE INTO users (id, username, password, role) VALUES ('admin-1', 'admin', 'admin', 'admin')`);
+  await pool.query(`
+    INSERT INTO users (id, username, password, role)
+    VALUES ('admin-1', 'admin', 'admin', 'admin')
+    ON DUPLICATE KEY UPDATE
+      username = VALUES(username),
+      password = VALUES(password),
+      role = VALUES(role)
+  `);
 }
 
 async function createPool(config: DbConfig) {
@@ -243,7 +250,8 @@ async function startServer() {
 
   app.post('/api/login', async (req, res) => {
     try {
-      const { username, password } = req.body;
+      const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+      const password = typeof req.body?.password === 'string' ? req.body.password.trim() : '';
       if (!username || !password) return res.status(400).json({ success: false, message: '用户名和密码必填' });
       const [users]: any = await requirePool().query(
         'SELECT id, username, email, role FROM users WHERE username = ? AND password = ?',

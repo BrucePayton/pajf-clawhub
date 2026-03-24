@@ -1,8 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Plus, Search, Filter, Database, Trash2, Edit3, Eye, FileText, CheckCircle, Clock, Upload, Users, Heart } from 'lucide-react';
+import { Plus, Search, Filter, Database, Trash2, Edit3, Eye, FileText, CheckCircle, Clock, Upload, Users, Heart, Trophy, BarChart3, Globe2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { Case } from '../types';
+import { Case, CaseType } from '../types';
 import { User } from '../services/apiService';
 import { DashboardModule } from './DashboardModule';
 
@@ -11,6 +11,11 @@ interface DashboardProps {
   user: User | null;
   appName: string;
   appDescription: string;
+  pageTitle: string;
+  pageSubtitle: string;
+  emptyTitle: string;
+  emptySubtitle: string;
+  showOverviewInsights?: boolean;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   onNewCase: () => void;
@@ -29,6 +34,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
   user,
   appName,
   appDescription,
+  pageTitle,
+  pageSubtitle,
+  emptyTitle,
+  emptySubtitle,
+  showOverviewInsights = false,
   searchQuery,
   setSearchQuery,
   onNewCase,
@@ -48,6 +58,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [currentPage, setCurrentPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(50);
   const [jumpPageInput, setJumpPageInput] = React.useState('1');
+
+  const caseTypeLabelMap: Record<CaseType, string> = {
+    openclaw_app: 'OpenClaw应用案例',
+    tool_app: '小工具应用案例',
+    agent_app: 'Agent案例',
+    rpa_app: 'RPA案例',
+    dashboard_app: '看板案例',
+  };
 
   const creators = React.useMemo(() => {
     const set = new Set<string>();
@@ -105,6 +123,36 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return pages;
   }, [safeCurrentPage, totalPages]);
 
+  const orgStats = React.useMemo(() => {
+    const statsMap = new Map<string, { count: number; published: number; publicCount: number; likes: number }>();
+    cases.forEach((c) => {
+      const current = statsMap.get(c.organization) || { count: 0, published: 0, publicCount: 0, likes: 0 };
+      current.count += 1;
+      if (c.status === 'published') current.published += 1;
+      if (c.isPublic === true) current.publicCount += 1;
+      current.likes += c.likeCount ?? 0;
+      statsMap.set(c.organization, current);
+    });
+    return Array.from(statsMap.entries())
+      .map(([organization, stat]) => ({
+        organization,
+        ...stat,
+        publishRate: stat.count > 0 ? Math.round((stat.published / stat.count) * 100) : 0,
+      }))
+      .sort((a, b) => b.count - a.count || b.likes - a.likes);
+  }, [cases]);
+
+  const headquartersStats = React.useMemo(() => {
+    const headquarters = cases.filter((c) => c.organization === '财服总部');
+    const regions = cases.filter((c) => c.organization !== '财服总部');
+    return {
+      headquartersCount: headquarters.length,
+      headquartersPublished: headquarters.filter((c) => c.status === 'published').length,
+      regionCount: regions.length,
+      regionPublished: regions.filter((c) => c.status === 'published').length,
+    };
+  }, [cases]);
+
   const handleExportExcel = React.useCallback(() => {
     const rows = filteredCases.map((c) => ({
       标题: c.title,
@@ -142,8 +190,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <FileText className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-black text-neutral-900 tracking-tight">{appName || '案例资产库'}</h1>
-              <p className="text-neutral-400 font-bold text-[10px] uppercase tracking-[0.2em]">{appDescription || 'Case Asset Repository'}</p>
+              <p className="text-neutral-400 font-bold text-[10px] uppercase tracking-[0.2em]">{appName || '案例资产库'}</p>
+              <h1 className="text-3xl font-black text-neutral-900 tracking-tight">{pageTitle}</h1>
+              <p className="text-neutral-500 text-sm mt-1">{pageSubtitle || appDescription || 'Case Asset Repository'}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -203,9 +252,107 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </header>
 
+        {showOverviewInsights && (
+          <>
+            <DashboardModule
+              title="平台分析"
+              subtitle="全平台评价指标、总部与地区分布以及组织排名"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                <div className="card-modern p-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">总案例数</p>
+                    <BarChart3 className="w-5 h-5 text-brand-500" />
+                  </div>
+                  <p className="text-3xl font-black text-neutral-900">{cases.length}</p>
+                </div>
+                <div className="card-modern p-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">公开案例</p>
+                    <Globe2 className="w-5 h-5 text-brand-500" />
+                  </div>
+                  <p className="text-3xl font-black text-neutral-900">{cases.filter(c => c.isPublic === true).length}</p>
+                </div>
+                <div className="card-modern p-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">累计点赞</p>
+                    <Heart className="w-5 h-5 text-pink-500" />
+                  </div>
+                  <p className="text-3xl font-black text-neutral-900">{cases.reduce((sum, c) => sum + (c.likeCount ?? 0), 0)}</p>
+                </div>
+                <div className="card-modern p-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">总部占比</p>
+                    <Trophy className="w-5 h-5 text-amber-500" />
+                  </div>
+                  <p className="text-3xl font-black text-neutral-900">
+                    {cases.length > 0 ? `${Math.round((headquartersStats.headquartersCount / cases.length) * 100)}%` : '0%'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="card-modern p-6">
+                  <p className="text-sm font-bold text-neutral-900 mb-4">总部与地区分布</p>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-neutral-500">财服总部案例</span>
+                      <span className="text-lg font-black text-brand-600">{headquartersStats.headquartersCount}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-neutral-500">总部已发布</span>
+                      <span className="text-lg font-black text-neutral-900">{headquartersStats.headquartersPublished}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-neutral-500">地区案例</span>
+                      <span className="text-lg font-black text-brand-600">{headquartersStats.regionCount}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-neutral-500">地区已发布</span>
+                      <span className="text-lg font-black text-neutral-900">{headquartersStats.regionPublished}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card-modern p-6">
+                  <p className="text-sm font-bold text-neutral-900 mb-4">组织案例数排名</p>
+                  <div className="space-y-3">
+                    {orgStats.slice(0, 6).map((item, index) => (
+                      <div key={item.organization} className="flex items-center justify-between rounded-xl bg-neutral-50 px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <span className="w-7 h-7 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center text-xs font-black">{index + 1}</span>
+                          <span className="text-sm font-semibold text-neutral-700">{item.organization}</span>
+                        </div>
+                        <span className="text-lg font-black text-neutral-900">{item.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="card-modern p-6">
+                  <p className="text-sm font-bold text-neutral-900 mb-4">组织发布率排名</p>
+                  <div className="space-y-3">
+                    {[...orgStats].sort((a, b) => b.publishRate - a.publishRate || b.count - a.count).slice(0, 6).map((item, index) => (
+                      <div key={item.organization} className="flex items-center justify-between rounded-xl bg-neutral-50 px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <span className="w-7 h-7 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center text-xs font-black">{index + 1}</span>
+                          <span className="text-sm font-semibold text-neutral-700">{item.organization}</span>
+                        </div>
+                        <span className="text-lg font-black text-neutral-900">{item.publishRate}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </DashboardModule>
+
+            <div className="mb-12" />
+          </>
+        )}
+
         <DashboardModule
-          title="案例概览"
-          subtitle="统一模块容器展示，保持布局可扩展"
+          title={showOverviewInsights ? "总体概览" : "模块概览"}
+          subtitle={showOverviewInsights ? "平台视角的基础统计概览" : `当前模块为「${pageTitle}」，功能与交互保持一致`}
         >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="card-modern p-8 group hover:border-brand-200 transition-all">
@@ -250,8 +397,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="mb-12" />
 
         <DashboardModule
-          title="案例列表"
-          subtitle="支持搜索、筛选、点赞与操作"
+          title={`${pageTitle}列表`}
+          subtitle="支持搜索、筛选、点赞、导出与常用操作"
           actions={
             <>
               <button className="p-2.5 bg-white border border-neutral-200 rounded-xl text-neutral-500 hover:text-brand-500 hover:border-brand-200 transition-all shadow-sm">
@@ -347,7 +494,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         </div>
                         <div>
                           <p className="font-bold text-neutral-900 text-sm group-hover:text-brand-600 transition-colors">{c.title}</p>
-                          <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest mt-0.5">VERSION {(c.version ?? 0).toFixed(1)}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest">VERSION {(c.version ?? 0).toFixed(1)}</p>
+                            {c.caseType && (
+                              <span className="px-2 py-0.5 rounded-md bg-brand-50 text-brand-600 text-[9px] font-bold">
+                                {caseTypeLabelMap[c.caseType]}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -426,8 +580,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <div className="w-20 h-20 bg-neutral-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
                 <Search className="w-10 h-10 text-neutral-200" />
               </div>
-              <p className="text-neutral-400 font-bold text-sm">未找到匹配的案例</p>
-              <p className="text-neutral-300 text-xs mt-1">尝试更换搜索关键词</p>
+              <p className="text-neutral-400 font-bold text-sm">{emptyTitle}</p>
+              <p className="text-neutral-300 text-xs mt-1">{emptySubtitle}</p>
             </div>
           )}
           {filteredCases.length > 0 && (

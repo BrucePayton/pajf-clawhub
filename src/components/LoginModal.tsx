@@ -14,7 +14,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLogin, onClose, error 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onLogin(user, pass);
+    onLogin(user.trim(), pass.trim());
   };
 
   return (

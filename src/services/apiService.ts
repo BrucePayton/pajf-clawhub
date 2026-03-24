@@ -19,19 +19,25 @@ export interface LikeCaseResult {
   message?: string;
 }
 
+export interface LoginResult {
+  success: boolean;
+  user?: User | null;
+  message?: string;
+}
+
 export const apiService = {
   // Auth
-  login: async (username: string, password: string): Promise<User | null> => {
+  login: async (username: string, password: string): Promise<LoginResult> => {
     const response = await fetch(`${API_URL}/api/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify({ username: username.trim(), password: password.trim() })
     });
+    const data = await response.json().catch(() => ({}));
     if (response.ok) {
-      const data = await response.json();
-      return data.user;
+      return { success: true, user: data.user };
     }
-    return null;
+    return { success: false, user: null, message: data?.message || '登录失败' };
   },
 
   // User Management
