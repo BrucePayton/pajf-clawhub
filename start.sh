@@ -10,9 +10,6 @@ git pull
 echo "=== Stopping Docker Compose ==="
 docker compose down
 
-echo "=== Starting Docker Compose again (second up) ==="
-docker compose up -d --build
-
 echo "=== Installing npm dependencies ==="
 npm install
 
