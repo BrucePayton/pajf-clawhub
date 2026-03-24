@@ -565,9 +565,33 @@ async function startServer() {
   app.delete('/api/cases/:id', async (req, res) => {
     try {
       const { id } = req.params;
+      const userId = (req.headers['x-user-id'] as string | undefined)?.trim();
+
+      if (!userId) {
+        return res.status(401).json({ success: false, message: '未登录或登录已失效' });
+      }
 
       if (pool) {
         try {
+          const [targetRows]: any = await pool.query(
+            'SELECT owner_id, case_data FROM cases WHERE id = ? LIMIT 1',
+            [id]
+          );
+          if (!targetRows.length) {
+            return res.status(404).json({ success: false, message: '案例不存在' });
+          }
+
+          const targetOwnerId = targetRows[0].owner_id;
+          const targetCaseData = targetRows[0].case_data;
+          const targetStatus = targetCaseData?.status;
+
+          if (!targetOwnerId || targetOwnerId !== userId) {
+            return res.status(403).json({ success: false, message: '无权删除他人案例' });
+          }
+          if (targetStatus !== 'draft') {
+            return res.status(403).json({ success: false, message: '仅允许删除未发布案例' });
+          }
+
           await pool.query('DELETE FROM cases WHERE id = ?', [id]);
           const [rows]: any = await pool.query('SELECT case_data FROM cases ORDER BY updated_at DESC');
           const allCases = rows.map((row: any) => row.case_data);
@@ -579,6 +603,17 @@ async function startServer() {
       }
 
       const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+      const targetCase = data.find((c: any) => c.id === id);
+      if (!targetCase) {
+        return res.status(404).json({ success: false, message: '案例不存在' });
+      }
+      if (!targetCase.ownerId || targetCase.ownerId !== userId) {
+        return res.status(403).json({ success: false, message: '无权删除他人案例' });
+      }
+      if (targetCase.status !== 'draft') {
+        return res.status(403).json({ success: false, message: '仅允许删除未发布案例' });
+      }
+
       const filtered = data.filter((c: any) => c.id !== id);
       fs.writeFileSync(DATA_FILE, JSON.stringify(filtered, null, 2));
       io.emit('cases_updated', filtered);

@@ -314,21 +314,54 @@ export default function App() {
     const target = cases.find(c => c.id === id);
     if (!target) return;
     
-    if (!user || (target.ownerId !== user.uid && user.uid !== 'admin-id')) {
+    if (!user) {
+      showToast('请先登录后再删除案例', 'error');
+      return;
+    }
+
+    if (target.ownerId !== user.uid) {
       showToast('您没有权限删除此案例', 'error');
       return;
     }
+
+    if (target.status !== 'draft') {
+      showToast('仅允许删除未发布（草稿）案例', 'error');
+      return;
+    }
+
     setConfirmDelete(id);
   };
 
   const confirmDeleteCase = async () => {
     if (confirmDelete) {
-      const success = await apiService.deleteCase(confirmDelete);
-      if (success) {
+      const target = cases.find(c => c.id === confirmDelete);
+      if (!user) {
+        showToast('请先登录后再删除案例', 'error');
         setConfirmDelete(null);
-        showToast('删除成功');
-      } else {
-        showToast('删除失败', 'error');
+        return;
+      }
+      if (!target || target.ownerId !== user.uid || target.status !== 'draft') {
+        showToast('仅允许删除自己未发布的案例', 'error');
+        setConfirmDelete(null);
+        return;
+      }
+
+      try {
+        const success = await apiService.deleteCase(confirmDelete, user);
+        if (success) {
+          setConfirmDelete(null);
+          showToast('删除成功');
+        } else {
+          showToast('删除失败', 'error');
+        }
+      } catch (error: any) {
+        if (error?.message === 'CASE_UNAUTHORIZED') {
+          showToast('请先登录后再删除案例', 'error');
+        } else if (error?.message === 'CASE_DELETE_FORBIDDEN') {
+          showToast('仅允许删除自己未发布的案例', 'error');
+        } else {
+          showToast('删除失败，请检查网络或权限', 'error');
+        }
       }
     }
   };
@@ -514,7 +547,7 @@ export default function App() {
             setCurrentCase(c);
             setActiveView('canvas');
           }}
-          onDeleteCase={(id) => setConfirmDelete(id)}
+          onDeleteCase={handleDelete}
           onLogin={() => setShowLoginModal(true)}
           onLogout={handleLogout}
           onOpenDbConfig={() => setShowDbConfig(true)}

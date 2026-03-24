@@ -35,7 +35,7 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
   };
 
   return (
-    <div className="h-screen bg-neutral-50 text-neutral-900 p-8 md:p-12 flex flex-col print:h-auto print:bg-white print:text-black print:p-0 overflow-hidden print:overflow-visible">
+    <div className="min-h-screen bg-neutral-50 text-neutral-900 p-8 md:p-12 flex flex-col print:h-auto print:bg-white print:text-black print:p-0 overflow-x-hidden print:overflow-visible">
       <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8 mb-8 print:hidden shrink-0">
         <div className="flex items-center gap-6">
           <button 
@@ -91,25 +91,27 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
           <motion.section 
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="card-modern p-6 relative overflow-hidden group print:bg-white print:border-neutral-200 print:text-black shrink-0"
+            className="card-modern p-6 relative overflow-hidden group print:bg-white print:border-neutral-200 print:text-black flex flex-col min-h-0 lg:flex-1"
           >
             <div className="absolute top-0 right-0 w-24 h-24 bg-brand-500/5 blur-2xl rounded-full -mr-12 -mt-12 print:hidden" />
-            <div className="flex items-center gap-3 mb-6">
+            <div className="flex items-center gap-3 mb-6 shrink-0">
               <div className="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center shadow-lg shadow-brand-500/20">
                 <Target className="w-4 h-4 text-white" />
               </div>
               <h2 className="text-lg font-bold tracking-tight">核心挑战</h2>
             </div>
-            <p className="text-neutral-600 leading-relaxed font-medium mb-6 text-sm print:text-neutral-600">
-              {caseData.challenges?.background ?? ''}
-            </p>
-            <div className="space-y-2.5">
-              {(caseData.challenges?.painPoints ?? []).map((point, idx) => (
-                <div key={idx} className="flex items-center gap-2.5 p-3 bg-neutral-50 rounded-xl border border-neutral-200/60 print:bg-neutral-50 print:border-neutral-100">
-                  <div className="w-1 h-1 bg-brand-500 rounded-full shrink-0" />
-                  <span className="text-xs font-semibold text-neutral-800 print:text-neutral-800">{point}</span>
-                </div>
-              ))}
+            <div className="flex-1 min-h-0 overflow-y-auto pr-2 -mr-2 custom-scrollbar print:overflow-visible">
+              <p className="text-neutral-600 leading-relaxed font-medium mb-6 text-sm print:text-neutral-600">
+                {caseData.challenges?.background ?? ''}
+              </p>
+              <div className="space-y-2.5">
+                {(caseData.challenges?.painPoints ?? []).map((point, idx) => (
+                  <div key={idx} className="flex items-center gap-2.5 p-3 bg-neutral-50 rounded-xl border border-neutral-200/60 print:bg-neutral-50 print:border-neutral-100">
+                    <div className="w-1 h-1 bg-brand-500 rounded-full shrink-0" />
+                    <span className="text-xs font-semibold text-neutral-800 print:text-neutral-800">{point}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </motion.section>
 

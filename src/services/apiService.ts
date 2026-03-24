@@ -97,10 +97,25 @@ export const apiService = {
     return response.ok;
   },
 
-  deleteCase: async (id: string): Promise<boolean> => {
+  deleteCase: async (id: string, user?: User | null): Promise<boolean> => {
+    const savedUser = localStorage.getItem('internal_user');
+    const currentUser = user || (savedUser ? JSON.parse(savedUser) : null);
+
+    const headers: Record<string, string> = {};
+    if (currentUser) {
+      headers['X-User-ID'] = currentUser.uid;
+    }
+
     const response = await fetch(`${API_URL}/api/cases/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers
     });
+    if (response.status === 401) {
+      throw new Error('CASE_UNAUTHORIZED');
+    }
+    if (response.status === 403) {
+      throw new Error('CASE_DELETE_FORBIDDEN');
+    }
     return response.ok;
   },
 

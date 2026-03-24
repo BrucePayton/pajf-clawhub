@@ -240,13 +240,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             <Edit3 className="w-4.5 h-4.5" />
                           </button>
                         )}
-                        <button
-                          onClick={() => onDeleteCase(c.id)}
-                          className="p-2.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                          title="删除"
-                        >
-                          <Trash2 className="w-4.5 h-4.5" />
-                        </button>
+                        {user?.uid === c.ownerId && c.status === 'draft' && (
+                          <button
+                            onClick={() => onDeleteCase(c.id)}
+                            className="p-2.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                            title="删除"
+                          >
+                            <Trash2 className="w-4.5 h-4.5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </motion.tr>
