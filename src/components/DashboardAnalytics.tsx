@@ -3,12 +3,19 @@ import {
   BarChart,
   Bar,
   CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
   ResponsiveContainer,
+  Scatter,
+  ScatterChart,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
 import { FullAnalyticsData } from '../services/apiService';
+import { Graph as G6Graph } from '@antv/g6';
 
 interface DashboardAnalyticsProps {
   analytics: FullAnalyticsData | null;
@@ -24,6 +31,92 @@ const ChartCard: React.FC<{ title: string; children: React.ReactNode }> = ({ tit
 );
 
 export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({ analytics, loading, error }) => {
+  const graphContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const graphInstanceRef = React.useRef<any>(null);
+
+  React.useEffect(() => {
+    const graphData = analytics?.charts?.knowledgeGraph;
+    const container = graphContainerRef.current;
+    if (!container || !graphData || graphData.nodes.length === 0) {
+      if (graphInstanceRef.current) {
+        graphInstanceRef.current.destroy();
+        graphInstanceRef.current = null;
+      }
+      return;
+    }
+
+    if (graphInstanceRef.current) {
+      graphInstanceRef.current.destroy();
+      graphInstanceRef.current = null;
+    }
+
+    try {
+      const width = container.clientWidth || 720;
+      const height = container.clientHeight || 320;
+      const graph = new G6Graph({
+        container,
+        width,
+        height,
+        data: graphData as any,
+        layout: {
+          type: 'force',
+          preventOverlap: true,
+          nodeSize: 28,
+          linkDistance: 120,
+        } as any,
+        node: {
+          style: {
+            labelText: (d: any) => d.label,
+            labelFontSize: 10,
+            lineWidth: 1,
+            stroke: '#E5E7EB',
+            fill: (d: any) => {
+              if (d.type === 'user') return '#DBEAFE';
+              if (d.type === 'region') return '#DCFCE7';
+              if (d.type === 'metric') return '#FEF3C7';
+              return '#F3F4F6';
+            },
+          },
+        } as any,
+        edge: {
+          style: {
+            stroke: '#D1D5DB',
+            endArrow: true,
+            labelText: (d: any) => d.label,
+            labelFontSize: 9,
+            labelFill: '#6B7280',
+          },
+        } as any,
+        behaviors: ['drag-canvas', 'zoom-canvas', 'drag-element'],
+      } as any);
+      graph.render();
+      graphInstanceRef.current = graph;
+
+      const onResize = () => {
+        if (!graphInstanceRef.current || !graphContainerRef.current) return;
+        const nextWidth = graphContainerRef.current.clientWidth || 720;
+        const nextHeight = graphContainerRef.current.clientHeight || 320;
+        graphInstanceRef.current.resize(nextWidth, nextHeight);
+      };
+      window.addEventListener('resize', onResize);
+      return () => {
+        window.removeEventListener('resize', onResize);
+        if (graphInstanceRef.current) {
+          graphInstanceRef.current.destroy();
+          graphInstanceRef.current = null;
+        }
+      };
+    } catch (e) {
+      console.error('Failed to render G6 graph:', e);
+      return () => {
+        if (graphInstanceRef.current) {
+          graphInstanceRef.current.destroy();
+          graphInstanceRef.current = null;
+        }
+      };
+    }
+  }, [analytics]);
+
   if (loading) {
     return (
       <div className="card-modern p-6 mb-12">
@@ -49,6 +142,14 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({ analytic
   }
 
   const { totals, charts, rankings } = analytics;
+  const heatValues = charts.heatmapMatrix.rows.flatMap((r) => r.values.map((v) => v.value));
+  const maxHeatValue = Math.max(1, ...heatValues);
+
+  const heatColor = (value: number) => {
+    const ratio = Math.min(1, Math.max(0, value / maxHeatValue));
+    const alpha = 0.1 + ratio * 0.9;
+    return `rgba(59,130,246,${alpha.toFixed(3)})`;
+  };
 
   if (totals.cases === 0) {
     return (
@@ -140,6 +241,104 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({ analytic
           </ResponsiveContainer>
         </ChartCard>
       </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <ChartCard title="月度趋势（折线图）">
+          <div data-export-chart="line" className="h-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={charts.lineSeries}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="total" name="总新增" stroke="#3B82F6" strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="published" name="已发布" stroke="#10B981" strokeWidth={2} dot={{ r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
+
+        <ChartCard title="案例质量分布（直方图）">
+          <div data-export-chart="histogram" className="h-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={charts.histogramSeries}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="bucket" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="count" fill="#6366F1" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <ChartCard title="版本-质量关系（散点图）">
+          <div data-export-chart="scatter" className="h-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="xVersion" name="版本" />
+                <YAxis dataKey="yQuality" name="质量分" domain={[0, 100]} />
+                <Tooltip cursor={{ strokeDasharray: '3 3' }} formatter={(v: any, key: string) => [v, key]} />
+                <Scatter data={charts.scatterSeries} fill="#F59E0B">
+                  {charts.scatterSeries.map((entry) => (
+                    <Cell key={entry.id} fill={entry.group === '财服总部' ? '#3B82F6' : '#F59E0B'} />
+                  ))}
+                </Scatter>
+              </ScatterChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
+
+        <ChartCard title="组织-月份热力矩阵（热力图）">
+          <div data-export-chart="heatmap" className="h-full overflow-auto">
+            <div className="min-w-[560px]">
+              <div
+                className="grid gap-1 mb-1"
+                style={{ gridTemplateColumns: `160px repeat(${charts.heatmapMatrix.columns.length}, minmax(64px, 1fr))` }}
+              >
+                <div className="text-xs text-neutral-400 font-semibold px-2 py-1">组织 \\ 月份</div>
+                {charts.heatmapMatrix.columns.map((col) => (
+                  <div key={col} className="text-xs text-neutral-500 font-semibold text-center px-1 py-1">{col}</div>
+                ))}
+              </div>
+              {charts.heatmapMatrix.rows.map((row) => (
+                <div
+                  key={row.row}
+                  className="grid gap-1 mb-1"
+                  style={{ gridTemplateColumns: `160px repeat(${charts.heatmapMatrix.columns.length}, minmax(64px, 1fr))` }}
+                >
+                  <div className="text-xs text-neutral-600 font-semibold px-2 py-2 bg-neutral-50 rounded">{row.row}</div>
+                  {row.values.map((cell) => (
+                    <div
+                      key={`${row.row}-${cell.col}`}
+                      className="h-8 rounded text-[11px] font-semibold text-center leading-8 text-neutral-800"
+                      style={{ background: heatColor(cell.value) }}
+                    >
+                      {cell.value}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </ChartCard>
+      </div>
+
+      <ChartCard title="知识图谱分布（G6）">
+        <div data-export-chart="knowledge-graph" className="h-full">
+          {charts.knowledgeGraph.nodes.length > 0 ? (
+            <div ref={graphContainerRef} className="w-full h-full rounded-xl border border-neutral-200" />
+          ) : (
+            <div className="h-full flex items-center justify-center text-sm text-neutral-500">
+              暂无可展示的图谱关系数据
+            </div>
+          )}
+        </div>
+      </ChartCard>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div className="card-modern p-6">

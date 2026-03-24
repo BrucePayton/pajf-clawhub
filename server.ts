@@ -209,19 +209,60 @@ const sortByMetrics = <T extends { name?: string; displayName?: string; count?: 
 const buildFullAnalytics = (allCases: any[]) => {
   const regionMap = new Map<string, { count: number; publishedCount: number; qualityTotal: number }>();
   const userMap = new Map<string, { displayName: string; total: number; published: number; privateCount: number; qualityTotal: number }>();
+  const monthMap = new Map<string, { total: number; published: number }>();
+  const heatmapMap = new Map<string, Map<string, number>>();
+  const scatterPoints: Array<{
+    id: string;
+    title: string;
+    xVersion: number;
+    yQuality: number;
+    sizeLikes: number;
+    group: string;
+  }> = [];
+
+  const graphNodeMap = new Map<string, { id: string; label: string; type: 'user' | 'region' | 'case' | 'metric' }>();
+  const graphEdgeMap = new Map<string, { source: string; target: string; label: string }>();
+
+  const getMonthKey = (timestamp: number) => {
+    const d = new Date(timestamp);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  };
+
+  const addGraphNode = (
+    id: string,
+    label: string,
+    type: 'user' | 'region' | 'case' | 'metric'
+  ) => {
+    if (!graphNodeMap.has(id)) {
+      graphNodeMap.set(id, { id, label, type });
+    }
+  };
+
+  const addGraphEdge = (source: string, target: string, label: string) => {
+    const edgeId = `${source}->${target}:${label}`;
+    if (!graphEdgeMap.has(edgeId)) {
+      graphEdgeMap.set(edgeId, { source, target, label });
+    }
+  };
 
   for (const rawCase of allCases) {
     const c = ensureCaseLikeFields(rawCase);
     const quality = computeCaseQualityScore(c);
     const region = c?.organization || '未指定组织';
+    const userId = c?.ownerId || 'unknown';
+    const displayName = c?.author?.trim?.() || '未命名用户';
+    const monthKey = getMonthKey(Number(c?.lastModified ?? Date.now()));
+    const likeCount = Number(c?.likeCount ?? 0);
+    const safeVersion = Number(c?.version ?? 0);
+
     const regionStats = regionMap.get(region) || { count: 0, publishedCount: 0, qualityTotal: 0 };
     regionStats.count += 1;
     if (c?.status === 'published') regionStats.publishedCount += 1;
     regionStats.qualityTotal += quality;
     regionMap.set(region, regionStats);
 
-    const userId = c?.ownerId || 'unknown';
-    const displayName = c?.author?.trim?.() || '未命名用户';
     const userStats = userMap.get(userId) || { displayName, total: 0, published: 0, privateCount: 0, qualityTotal: 0 };
     userStats.displayName = displayName;
     userStats.total += 1;
@@ -229,6 +270,44 @@ const buildFullAnalytics = (allCases: any[]) => {
     if (c?.isPublic !== true) userStats.privateCount += 1;
     userStats.qualityTotal += quality;
     userMap.set(userId, userStats);
+
+    const monthStats = monthMap.get(monthKey) || { total: 0, published: 0 };
+    monthStats.total += 1;
+    if (c?.status === 'published') monthStats.published += 1;
+    monthMap.set(monthKey, monthStats);
+
+    const regionMonthMap = heatmapMap.get(region) || new Map<string, number>();
+    regionMonthMap.set(monthKey, Number(regionMonthMap.get(monthKey) ?? 0) + 1);
+    heatmapMap.set(region, regionMonthMap);
+
+    scatterPoints.push({
+      id: String(c?.id ?? `${userId}-${monthKey}`),
+      title: String(c?.title ?? '未命名案例'),
+      xVersion: Number.isFinite(safeVersion) ? safeVersion : 0,
+      yQuality: Number(quality.toFixed(1)),
+      sizeLikes: Math.max(1, likeCount + 1),
+      group: region,
+    });
+
+    const caseId = `case:${c?.id || `${userId}-${monthKey}`}`;
+    const userNodeId = `user:${userId}`;
+    const regionNodeId = `region:${region}`;
+
+    addGraphNode(userNodeId, displayName, 'user');
+    addGraphNode(regionNodeId, region, 'region');
+    addGraphNode(caseId, String(c?.title || '未命名案例'), 'case');
+
+    addGraphEdge(userNodeId, caseId, '创建');
+    addGraphEdge(caseId, regionNodeId, '归属');
+
+    const metrics = Array.isArray(c?.businessValue?.metrics) ? c.businessValue.metrics : [];
+    for (const metric of metrics) {
+      const metricLabel = String(metric?.label || '').trim();
+      if (!metricLabel) continue;
+      const metricNodeId = `metric:${metricLabel}`;
+      addGraphNode(metricNodeId, metricLabel, 'metric');
+      addGraphEdge(caseId, metricNodeId, '产出');
+    }
   }
 
   const regionRows = Array.from(regionMap.entries()).map(([name, stats]) => ({
@@ -253,6 +332,42 @@ const buildFullAnalytics = (allCases: any[]) => {
   const userOverview = sortByMetrics(userRows, 'count');
   const topByCaseCount = userOverview.slice(0, 10);
   const topByQuality = sortByMetrics(userRows, 'avgQualityScore').slice(0, 10);
+  const lineSeries = Array.from(monthMap.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([month, stats]) => ({
+      month,
+      total: stats.total,
+      published: stats.published,
+    }));
+
+  const histogramBins = [
+    { key: '0-20', min: 0, max: 20, count: 0 },
+    { key: '20-40', min: 20, max: 40, count: 0 },
+    { key: '40-60', min: 40, max: 60, count: 0 },
+    { key: '60-80', min: 60, max: 80, count: 0 },
+    { key: '80-100', min: 80, max: 101, count: 0 },
+  ];
+  for (const point of scatterPoints) {
+    const v = point.yQuality;
+    const hit = histogramBins.find((b) => v >= b.min && v < b.max);
+    if (hit) hit.count += 1;
+  }
+
+  const heatmapMonths = Array.from(new Set(lineSeries.map((r) => r.month)));
+  const heatmapRows = Array.from(heatmapMap.entries())
+    .map(([regionName, values]) => ({
+      row: regionName,
+      values: heatmapMonths.map((month) => ({
+        col: month,
+        value: Number(values.get(month) ?? 0),
+      })),
+    }))
+    .sort((a, b) => a.row.localeCompare(b.row, 'zh-Hans-CN'));
+
+  const knowledgeGraph = {
+    nodes: Array.from(graphNodeMap.values()),
+    edges: Array.from(graphEdgeMap.values()),
+  };
 
   return {
     totals: {
@@ -267,6 +382,14 @@ const buildFullAnalytics = (allCases: any[]) => {
       regionQuality: regionQualityRanking.map((r) => ({ name: r.name, qualityScore: Number(r.qualityScore.toFixed(1)) })),
       userTopByCaseCount: topByCaseCount.map((u) => ({ name: u.displayName, total: u.total })),
       userTopByQuality: topByQuality.map((u) => ({ name: u.displayName, avgQualityScore: Number(u.avgQualityScore.toFixed(1)) })),
+      lineSeries,
+      scatterSeries: scatterPoints,
+      histogramSeries: histogramBins.map((b) => ({ bucket: b.key, count: b.count })),
+      heatmapMatrix: {
+        columns: heatmapMonths,
+        rows: heatmapRows,
+      },
+      knowledgeGraph,
     },
     rankings: {
       regionCountRanking,

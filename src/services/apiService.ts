@@ -25,6 +25,27 @@ export interface FullAnalyticsData {
     regionQuality: Array<{ name: string; qualityScore: number }>;
     userTopByCaseCount: Array<{ name: string; total: number }>;
     userTopByQuality: Array<{ name: string; avgQualityScore: number }>;
+    lineSeries: Array<{ month: string; total: number; published: number }>;
+    scatterSeries: Array<{
+      id: string;
+      title: string;
+      xVersion: number;
+      yQuality: number;
+      sizeLikes: number;
+      group: string;
+    }>;
+    histogramSeries: Array<{ bucket: string; count: number }>;
+    heatmapMatrix: {
+      columns: string[];
+      rows: Array<{
+        row: string;
+        values: Array<{ col: string; value: number }>;
+      }>;
+    };
+    knowledgeGraph: {
+      nodes: Array<{ id: string; label: string; type: 'user' | 'region' | 'case' | 'metric' }>;
+      edges: Array<{ source: string; target: string; label: string }>;
+    };
   };
   rankings: {
     regionCountRanking: Array<{ name: string; count: number; publishedCount: number; qualityScore: number }>;

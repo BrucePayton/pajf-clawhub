@@ -1,5 +1,6 @@
 import pptxgen from "pptxgenjs";
 import { Case } from "../types";
+import { FullAnalyticsData } from "./apiService";
 
 const splitText = (text: string) => {
   if (!text) return [];
@@ -328,5 +329,98 @@ export const exportToPptx = async (caseData: Case) => {
     console.error("PPTX write error:", err);
     // Fallback to library's internal method if blob fails
     await pptx.writeFile({ fileName: `${caseData.title.replace(/[\\/:*?"<>|]/g, '_')}.pptx` });
+  }
+};
+
+interface AnalyticsChartImage {
+  key: string;
+  title: string;
+  imageDataUrl: string;
+}
+
+export const exportAnalyticsToPptx = async (
+  analytics: FullAnalyticsData | null,
+  chartImages: AnalyticsChartImage[]
+) => {
+  const pptx = new pptxgen();
+  pptx.layout = "LAYOUT_WIDE";
+
+  const now = new Date();
+  const dateLabel = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const subtitle = analytics
+    ? `总案例 ${analytics.totals.cases} ｜ 已发布 ${analytics.totals.published} ｜ 组织 ${analytics.totals.regions}`
+    : "分析数据快照";
+
+  const cover = pptx.addSlide();
+  cover.background = { color: "F8FAFC" };
+  cover.addText("OpenClaw 分析看板导出", {
+    x: 0.6,
+    y: 0.6,
+    w: 12,
+    h: 0.8,
+    fontSize: 30,
+    bold: true,
+    color: "0F172A",
+  });
+  cover.addText(subtitle, {
+    x: 0.6,
+    y: 1.5,
+    w: 12,
+    h: 0.4,
+    fontSize: 14,
+    color: "475569",
+  });
+  cover.addText(`导出时间：${dateLabel}`, {
+    x: 0.6,
+    y: 1.95,
+    w: 12,
+    h: 0.3,
+    fontSize: 11,
+    color: "64748B",
+  });
+
+  for (const chart of chartImages) {
+    const slide = pptx.addSlide();
+    slide.background = { color: "FFFFFF" };
+    slide.addText(chart.title, {
+      x: 0.5,
+      y: 0.3,
+      w: 12.3,
+      h: 0.5,
+      fontSize: 18,
+      bold: true,
+      color: "111827",
+    });
+    slide.addText(`图表标识：${chart.key}`, {
+      x: 0.5,
+      y: 0.78,
+      w: 12.3,
+      h: 0.25,
+      fontSize: 10,
+      color: "6B7280",
+    });
+    slide.addImage({
+      data: chart.imageDataUrl,
+      x: 0.5,
+      y: 1.1,
+      w: 12.3,
+      h: 5.7,
+    });
+  }
+
+  const filename = `OpenClaw_Analytics_${dateLabel}.pptx`;
+  try {
+    const blob = await pptx.write({ outputType: "blob" });
+    const url = window.URL.createObjectURL(blob as Blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error("Analytics PPTX write error:", err);
+    await pptx.writeFile({ fileName: filename });
   }
 };
