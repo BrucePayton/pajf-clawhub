@@ -11,6 +11,11 @@ services:
       - NODE_ENV=production
       - PORT=3010
       - HOST=0.0.0.0
+      - DB_HOST=mysql-server
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=123456
+      - DB_NAME=OpenclawAppPlatform
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

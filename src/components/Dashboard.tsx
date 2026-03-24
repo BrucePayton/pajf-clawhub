@@ -153,6 +153,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
     };
   }, [cases]);
 
+  const caseTypeStats = React.useMemo(() => {
+    const orderedTypes: CaseType[] = ['openclaw_app', 'tool_app', 'agent_app', 'rpa_app', 'dashboard_app'];
+    return orderedTypes.map((type) => {
+      const typeCases = cases.filter((c) => (c.caseType || 'openclaw_app') === type);
+      const published = typeCases.filter((c) => c.status === 'published').length;
+      const likes = typeCases.reduce((sum, c) => sum + (c.likeCount ?? 0), 0);
+      const percentage = cases.length > 0 ? Math.round((typeCases.length / cases.length) * 100) : 0;
+      return {
+        type,
+        label: caseTypeLabelMap[type],
+        count: typeCases.length,
+        published,
+        likes,
+        percentage,
+      };
+    });
+  }, [cases]);
+
   const handleExportExcel = React.useCallback(() => {
     const rows = filteredCases.map((c) => ({
       标题: c.title,
@@ -339,6 +357,79 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           <span className="text-sm font-semibold text-neutral-700">{item.organization}</span>
                         </div>
                         <span className="text-lg font-black text-neutral-900">{item.publishRate}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </DashboardModule>
+
+            <div className="mb-12" />
+
+            <DashboardModule
+              title="案例类型结构"
+              subtitle="从 OpenClaw、工具、Agent、RPA、看板五类案例观察平台结构占比"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
+                {caseTypeStats.map((item) => (
+                  <div key={item.type} className="card-modern p-5">
+                    <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">{item.label}</p>
+                    <div className="flex items-end justify-between gap-3 mb-3">
+                      <p className="text-3xl font-black text-neutral-900">{item.count}</p>
+                      <span className="text-sm font-black text-brand-600">{item.percentage}%</span>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="h-2 rounded-full bg-neutral-100 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-orange-400 to-brand-500"
+                          style={{ width: `${Math.max(item.percentage, item.count > 0 ? 8 : 0)}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-neutral-500">
+                        <span>已发布 {item.published}</span>
+                        <span>点赞 {item.likes}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="card-modern p-6">
+                  <p className="text-sm font-bold text-neutral-900 mb-4">类型占比排名</p>
+                  <div className="space-y-3">
+                    {[...caseTypeStats].sort((a, b) => b.count - a.count || b.likes - a.likes).map((item, index) => (
+                      <div key={item.type} className="flex items-center justify-between rounded-xl bg-neutral-50 px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <span className="w-7 h-7 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center text-xs font-black">{index + 1}</span>
+                          <div>
+                            <p className="text-sm font-semibold text-neutral-800">{item.label}</p>
+                            <p className="text-[11px] text-neutral-400">案例数 {item.count} / 占比 {item.percentage}%</p>
+                          </div>
+                        </div>
+                        <span className="text-lg font-black text-neutral-900">{item.percentage}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="card-modern p-6">
+                  <p className="text-sm font-bold text-neutral-900 mb-4">类型成熟度观察</p>
+                  <div className="space-y-3">
+                    {[...caseTypeStats].sort((a, b) => b.published - a.published || b.count - a.count).map((item) => (
+                      <div key={`${item.type}-maturity`} className="rounded-xl bg-neutral-50 px-4 py-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-semibold text-neutral-800">{item.label}</span>
+                          <span className="text-xs font-bold text-neutral-500">
+                            发布率 {item.count > 0 ? Math.round((item.published / item.count) * 100) : 0}%
+                          </span>
+                        </div>
+                        <div className="h-2 rounded-full bg-neutral-100 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500"
+                            style={{ width: `${item.count > 0 ? Math.round((item.published / item.count) * 100) : 0}%` }}
+                          />
+                        </div>
                       </div>
                     ))}
                   </div>
