@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Plus, Search, Filter, Database, Trash2, Edit3, Eye, FileText, CheckCircle, Clock, Upload, Users, Heart, ChartNoAxesCombined } from 'lucide-react';
+import { Plus, Search, Filter, Database, Trash2, Edit3, Eye, FileText, CheckCircle, Clock, Upload, Users, Heart } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Case } from '../types';
 import { User } from '../services/apiService';
@@ -18,7 +18,6 @@ interface DashboardProps {
   onViewCanvas: (c: Case) => void;
   onDeleteCase: (id: string) => void;
   onLikeCase: (id: string) => void;
-  onOpenAnalytics: () => void;
   onLogin: () => void;
   onLogout: () => void;
   onOpenDbConfig: () => void;
@@ -37,7 +36,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onViewCanvas,
   onDeleteCase,
   onLikeCase,
-  onOpenAnalytics,
   onLogin,
   onLogout,
   onOpenDbConfig,
@@ -190,23 +188,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <Plus className="w-5 h-5" />
                   新建案例
                 </button>
-                <button
-                  onClick={onOpenAnalytics}
-                  className="btn-secondary"
-                >
-                  <ChartNoAxesCombined className="w-5 h-5 text-brand-500" />
-                  分析页面
-                </button>
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <button
-                  onClick={onOpenAnalytics}
-                  className="btn-secondary"
-                >
-                  <ChartNoAxesCombined className="w-5 h-5 text-brand-500" />
-                  分析页面
-                </button>
                 <button 
                   onClick={onLogin}
                   className="btn-secondary"

@@ -21,6 +21,17 @@ export interface RoadmapItem {
 }
 
 export type Organization = '财服总部' | '深圳分公司' | '上海分公司' | '合肥分公司' | '成都分公司' | '内江分公司';
+export type CaseType = 'openclaw_app' | 'tool_app' | 'agent_app' | 'rpa_app' | 'dashboard_app';
+export interface CaseTypeMeta {
+  designHighlights?: string;
+  effectSummary?: string;
+  upstreamSystems?: string[];
+  downstreamSystems?: string[];
+  keyPoints?: string[];
+  dataDimensions?: string[];
+  analysisMethods?: string[];
+  usageGuide?: string;
+}
 
 export interface Case {
   id: string;
@@ -37,6 +48,8 @@ export interface Case {
   isPublic?: boolean;
   likeCount?: number;
   likedByKeys?: string[];
+  caseType?: CaseType;
+  caseTypeMeta?: CaseTypeMeta;
 
   // Section 01: Challenges - 可选字段，提供 null 安全性
   challenges?: {

@@ -12,50 +12,6 @@ export interface User {
   photoURL?: string;
 }
 
-export interface FullAnalyticsData {
-  totals: {
-    cases: number;
-    published: number;
-    privateCases: number;
-    users: number;
-    regions: number;
-  };
-  charts: {
-    regionCaseCount: Array<{ name: string; count: number }>;
-    regionQuality: Array<{ name: string; qualityScore: number }>;
-    userTopByCaseCount: Array<{ name: string; total: number }>;
-    userTopByQuality: Array<{ name: string; avgQualityScore: number }>;
-    lineSeries: Array<{ month: string; total: number; published: number }>;
-    scatterSeries: Array<{
-      id: string;
-      title: string;
-      xVersion: number;
-      yQuality: number;
-      sizeLikes: number;
-      group: string;
-    }>;
-    histogramSeries: Array<{ bucket: string; count: number }>;
-    heatmapMatrix: {
-      columns: string[];
-      rows: Array<{
-        row: string;
-        values: Array<{ col: string; value: number }>;
-      }>;
-    };
-    knowledgeGraph: {
-      nodes: Array<{ id: string; label: string; type: 'user' | 'region' | 'case' | 'metric' }>;
-      edges: Array<{ source: string; target: string; label: string }>;
-    };
-  };
-  rankings: {
-    regionCountRanking: Array<{ name: string; count: number; publishedCount: number; qualityScore: number }>;
-    regionQualityRanking: Array<{ name: string; count: number; publishedCount: number; qualityScore: number }>;
-    userOverview: Array<{ userId: string; displayName: string; total: number; published: number; privateCount: number; publishRate: number; avgQualityScore: number }>;
-    topByCaseCount: Array<{ userId: string; displayName: string; total: number; published: number; privateCount: number; publishRate: number; avgQualityScore: number }>;
-    topByQuality: Array<{ userId: string; displayName: string; total: number; published: number; privateCount: number; publishRate: number; avgQualityScore: number }>;
-  };
-}
-
 export interface LikeCaseResult {
   success: boolean;
   duplicated?: boolean;
@@ -105,10 +61,11 @@ export const apiService = {
 
   // Cases
   // owner_id: if provided, shows public + user's private cases; if undefined, shows only public cases
-  getCases: async (owner_id?: string): Promise<any[]> => {
+  getCases: async (owner_id?: string, case_type?: string): Promise<any[]> => {
     let url = `${API_URL}/api/cases`;
     const params = new URLSearchParams();
     if (owner_id) params.set('owner_id', owner_id);
+    if (case_type) params.set('case_type', case_type);
     if (params.toString()) url += `?${params.toString()}`;
 
     const response = await fetch(url);
@@ -116,14 +73,6 @@ export const apiService = {
       return await response.json();
     }
     return [];
-  },
-
-  getFullAnalytics: async (): Promise<FullAnalyticsData | null> => {
-    const response = await fetch(`${API_URL}/api/analytics/full`);
-    if (response.ok) {
-      return await response.json();
-    }
-    return null;
   },
 
   bootstrapCases: async (): Promise<{ success: boolean; inserted?: number }> => {

@@ -188,7 +188,7 @@ export const DbConfigModal: React.FC<DbConfigModalProps> = ({
             className="w-full py-2 text-neutral-400 hover:text-brand-600 text-[10px] font-bold uppercase tracking-[0.2em] transition-colors flex items-center justify-center gap-2"
           >
             <RefreshCw className="w-3 h-3" />
-            重置为本地 JSON 文件存储 / RESET TO LOCAL
+            禁用文件模式（仅 MySQL） / MYSQL ONLY
           </button>
 
           {testResult && (

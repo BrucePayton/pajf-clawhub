@@ -26,12 +26,17 @@ import {
   Calendar,
   Database,
   Settings,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Wrench,
+  Bot,
+  Workflow,
+  PanelLeft,
+  Users
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Case, CaseStep, MetricCard, RoadmapItem, DbConfig } from './types';
+import { Case, CaseStep, MetricCard, RoadmapItem, DbConfig, CaseType, CaseTypeMeta } from './types';
 import { exportToPptx } from './services/pptxService';
-import { apiService, FullAnalyticsData, User } from './services/apiService';
+import { apiService, User } from './services/apiService';
 import { Toast, ConfirmDialog } from './components/Common';
 import { LoginModal } from './components/LoginModal';
 import { DbConfigModal } from './components/DbConfigModal';
@@ -39,7 +44,6 @@ import { Dashboard } from './components/Dashboard';
 import { Editor } from './components/Editor';
 import { CanvasView } from './components/CanvasView';
 import { UserManagementModal } from './components/UserManagementModal';
-import { AnalyticsPage } from './components/AnalyticsPage';
 import metadata from '../metadata.json';
 
 // Helper to generate IDs safely in non-secure contexts (HTTP/IP)
@@ -51,48 +55,134 @@ const generateId = () => {
 };
 
 // Default initial case template
-const createNewCase = (): Case => ({
-  id: generateId(),
-  title: '平安财服 OpenClaw 应用价值案例',
-  subtitle: '记录业务优化点滴，沉淀数智化转型价值',
-  status: 'draft',
-  version: 0.1,
-  lastModified: Date.now(),
-  author: '',
-  umNumber: '',
-  team: '',
-  organization: '财服总部',
-  challenges: {
-    background: '业务背景描述：此处描述当前的业务流程或背景，如业务目标、涉及系统等。',
-    painPoints: ['痛点 1：[……]', '痛点 2：[……]', '痛点 3：[……]'],
-    objectives: '优化目标：此处描述通过使用 OpenClaw 期望达到的状态。',
-  },
-  implementation: {
-    steps: [
-      { id: '1', title: '环境配置/任务创建', description: '详细描述在该步骤中需要执行的操作。', imageUrl: '' },
-      { id: '2', title: '脚本编写/参数设置', description: '详细描述该步骤的关键设置或代码片段说明。', imageUrl: '' },
-      { id: '3', title: '任务运行/结果监控', description: '描述任务如何启动、如何监控状态及获取结果。', imageUrl: '' },
-    ],
-  },
-  businessValue: {
-    metrics: [
-      { id: '1', label: '效率提升', value: '85%', subtext: '原流程耗时：4 小时 → OpenClaw：36 分钟', icon: 'trending-up' },
-      { id: '2', label: '时间节约', value: '120h', subtext: '预计每月节约 120 小时，释放人员精力专注于核心业务', icon: 'clock' },
-    ],
-    footerNote: '注：此效果基于……的预估，将在实际运行后进行验证',
-  },
-  roadmap: {
-    items: [
-      { id: '1', task: '效果验证', content: '主要内容：[……]', date: '2026.04' },
-      { id: '2', task: '脚本迭代', content: '主要内容：[……]', date: '2026.05' },
-      { id: '3', task: '推广复制', content: '主要内容：[……]', date: '2026.06' },
-    ],
-  },
-});
+const createCaseTypeMeta = (caseType: CaseType): CaseTypeMeta => {
+  if (caseType === 'tool_app') {
+    return {
+      designHighlights: '设计思路：模块拆分、交互路径、性能考虑。',
+      effectSummary: '效果说明：上线后效率和体验改善情况。',
+    };
+  }
+  if (caseType === 'rpa_app') {
+    return {
+      upstreamSystems: ['源系统A'],
+      downstreamSystems: ['目标系统B'],
+    };
+  }
+  if (caseType === 'agent_app') {
+    return {
+      keyPoints: ['关键点1：提示词策略', '关键点2：容错机制'],
+    };
+  }
+  if (caseType === 'dashboard_app') {
+    return {
+      dataDimensions: ['时间维度', '组织维度'],
+      analysisMethods: ['同比/环比', '趋势分析'],
+      usageGuide: '使用说明：按筛选条件查看核心指标并下钻分析。',
+    };
+  }
+  return {};
+};
+
+const createCaseTypeSeed = (caseType: CaseType) => {
+  if (caseType === 'tool_app') {
+    return {
+      title: '平安财服 小工具应用价值案例',
+      subtitle: '以轻量工具设计提升效率与体验',
+      objective: '通过小工具优化重复环节并提升操作体验。',
+      stepTitles: ['需求梳理与方案设计', '工具实现与联调', '效果验证与优化'],
+      metricLabel: '使用效率提升',
+      metricValue: '75%',
+    };
+  }
+  if (caseType === 'agent_app') {
+    return {
+      title: '平安财服 Agent 应用价值案例',
+      subtitle: '沉淀可复用的智能体执行策略',
+      objective: '通过 Agent 自动决策与执行提升处理质量。',
+      stepTitles: ['任务拆解与提示策略', 'Agent执行与校验', '结果复盘与策略沉淀'],
+      metricLabel: '任务完成率',
+      metricValue: '88%',
+    };
+  }
+  if (caseType === 'rpa_app') {
+    return {
+      title: '平安财服 RPA 应用价值案例',
+      subtitle: '构建稳定可扩展的流程自动化能力',
+      objective: '通过 RPA 打通上下游流程并减少人工介入。',
+      stepTitles: ['流程建模与规则定义', '机器人执行与监控', '异常处理与持续优化'],
+      metricLabel: '人效提升',
+      metricValue: '80%',
+    };
+  }
+  if (caseType === 'dashboard_app') {
+    return {
+      title: '平安财服 看板应用价值案例',
+      subtitle: '以数据维度和指标分析驱动业务决策',
+      objective: '通过看板实现指标可视化分析与高效使用。',
+      stepTitles: ['指标口径与维度建模', '看板搭建与联调', '使用推广与反馈优化'],
+      metricLabel: '决策响应速度提升',
+      metricValue: '70%',
+    };
+  }
+  return {
+    title: '平安财服 OpenClaw 应用价值案例',
+    subtitle: '记录业务优化点滴，沉淀数智化转型价值',
+    objective: '优化目标：此处描述通过使用 OpenClaw 期望达到的状态。',
+    stepTitles: ['环境配置/任务创建', '脚本编写/参数设置', '任务运行/结果监控'],
+    metricLabel: '效率提升',
+    metricValue: '85%',
+  };
+};
+
+const createNewCase = (caseType: CaseType = 'openclaw_app'): Case => {
+  const seed = createCaseTypeSeed(caseType);
+  return {
+    id: generateId(),
+    title: seed.title,
+    subtitle: seed.subtitle,
+    status: 'draft',
+    version: 0.1,
+    lastModified: Date.now(),
+    author: '',
+    umNumber: '',
+    team: '',
+    organization: '财服总部',
+    caseType,
+    caseTypeMeta: createCaseTypeMeta(caseType),
+    challenges: {
+      background: '业务背景描述：此处描述当前的业务流程或背景，如业务目标、涉及系统等。',
+      painPoints: ['痛点 1：[……]', '痛点 2：[……]', '痛点 3：[……]'],
+      objectives: seed.objective,
+    },
+    implementation: {
+      steps: [
+        { id: '1', title: seed.stepTitles[0], description: '详细描述在该步骤中需要执行的操作。', imageUrl: '' },
+        { id: '2', title: seed.stepTitles[1], description: '详细描述该步骤的关键设置或代码片段说明。', imageUrl: '' },
+        { id: '3', title: seed.stepTitles[2], description: '描述任务如何启动、如何监控状态及获取结果。', imageUrl: '' },
+      ],
+    },
+    businessValue: {
+      metrics: [
+        { id: '1', label: seed.metricLabel, value: seed.metricValue, subtext: '原流程耗时：4 小时 → 优化后：36 分钟', icon: 'trending-up' },
+        { id: '2', label: '时间节约', value: '120h', subtext: '预计每月节约 120 小时，释放人员精力专注于核心业务', icon: 'clock' },
+      ],
+      footerNote: '注：此效果基于……的预估，将在实际运行后进行验证',
+    },
+    roadmap: {
+      items: [
+        { id: '1', task: '效果验证', content: '主要内容：[……]', date: '2026.04' },
+        { id: '2', task: '脚本迭代', content: '主要内容：[……]', date: '2026.05' },
+        { id: '3', task: '推广复制', content: '主要内容：[……]', date: '2026.06' },
+      ],
+    },
+  };
+};
 
 export default function App() {
+  type MenuKey = 'overview' | 'openclaw_app' | 'tool_app' | 'agent_app' | 'rpa_app' | 'dashboard_app' | 'user_management';
+
   const [cases, setCases] = useState<Case[]>([]);
-  const [activeView, setActiveView] = useState<'dashboard' | 'analytics' | 'editor' | 'canvas'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'editor' | 'canvas'>('dashboard');
   const [currentCase, setCurrentCase] = useState<Case | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -102,6 +192,7 @@ export default function App() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showDbConfig, setShowDbConfig] = useState(false);
   const [showUserManagement, setShowUserManagement] = useState(false);
+  const [menuKey, setMenuKey] = useState<MenuKey>('overview');
   const [dbConfig, setDbConfig] = useState<DbConfig>({
     host: 'localhost',
     port: 3306,
@@ -109,9 +200,6 @@ export default function App() {
     password: '',
     database: 'claw_cases'
   });
-  const [fullAnalytics, setFullAnalytics] = useState<FullAnalyticsData | null>(null);
-  const [analyticsLoading, setAnalyticsLoading] = useState(false);
-  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const lastLoadedTimeRef = React.useRef(0);
   const activeViewRef = React.useRef(activeView);
   const showLoginModalRef = React.useRef(showLoginModal);
@@ -121,22 +209,16 @@ export default function App() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const loadFullAnalytics = useCallback(async () => {
-    setAnalyticsLoading(true);
-    setAnalyticsError(null);
-    try {
-      const data = await apiService.getFullAnalytics();
-      setFullAnalytics(data);
-    } catch (error: any) {
-      setAnalyticsError(error?.message || '未知错误');
-    } finally {
-      setAnalyticsLoading(false);
+  const mapMenuToCaseType = (key: MenuKey): CaseType | undefined => {
+    if (key === 'openclaw_app' || key === 'tool_app' || key === 'agent_app' || key === 'rpa_app' || key === 'dashboard_app') {
+      return key;
     }
-  }, []);
+    return undefined;
+  };
 
-  const refreshCasesOnce = useCallback(async (userId?: string) => {
+  const refreshCasesOnce = useCallback(async (userId?: string, caseType?: CaseType) => {
     try {
-      const data = await apiService.getCases(userId);
+      const data = await apiService.getCases(userId, caseType);
       setCases(data);
       // 手动刷新后更新时间戳，避免紧接着被 socket 再次触发重复拉取
       lastLoadedTimeRef.current = Date.now();
@@ -147,16 +229,15 @@ export default function App() {
     }
   }, []);
 
-  const ensureBootstrapAndLoad = useCallback(async (userId?: string) => {
-    let currentCases = await apiService.getCases(userId);
+  const ensureBootstrapAndLoad = useCallback(async (userId?: string, caseType?: CaseType) => {
+    let currentCases = await apiService.getCases(userId, caseType);
     if (currentCases.length === 0) {
       await apiService.bootstrapCases();
-      currentCases = await apiService.getCases(userId);
+      currentCases = await apiService.getCases(userId, caseType);
     }
     setCases(currentCases);
     lastLoadedTimeRef.current = Date.now();
-    await loadFullAnalytics();
-  }, [loadFullAnalytics]);
+  }, []);
 
   // Auth Persistence
   useEffect(() => {
@@ -182,7 +263,7 @@ export default function App() {
     if (!isAuthReady) return;
 
     // Initial load with backend bootstrap
-    ensureBootstrapAndLoad(user?.uid);
+    ensureBootstrapAndLoad(user?.uid, mapMenuToCaseType(menuKey));
 
     // Listen for updates from other users
     const unsubscribe = apiService.onCasesUpdated(() => {
@@ -195,18 +276,19 @@ export default function App() {
       // 登录中避免刷新导致弹窗闪动或输入状态丢失
       if (showLoginModalRef.current) return;
 
-      refreshCasesOnce(user?.uid);
-      loadFullAnalytics();
+      refreshCasesOnce(user?.uid, mapMenuToCaseType(menuKey));
     });
 
     return () => unsubscribe();
-  }, [isAuthReady, user, loadFullAnalytics, refreshCasesOnce, ensureBootstrapAndLoad]);
+  }, [isAuthReady, user, menuKey, refreshCasesOnce, ensureBootstrapAndLoad]);
 
   useEffect(() => {
-    if (activeView === 'dashboard' || activeView === 'analytics') {
-      loadFullAnalytics();
+    if (!isAuthReady) return;
+    ensureBootstrapAndLoad(user?.uid, mapMenuToCaseType(menuKey));
+    if (menuKey === 'user_management') {
+      setShowUserManagement(true);
     }
-  }, [activeView, loadFullAnalytics]);
+  }, [menuKey, isAuthReady, user, ensureBootstrapAndLoad]);
 
   // Load DB Config
   useEffect(() => {
@@ -224,7 +306,8 @@ export default function App() {
       setShowLoginModal(true);
       return;
     }
-    const newCase = { ...createNewCase(), ownerId: user.uid, author: user.displayName || '' };
+    const currentType = mapMenuToCaseType(menuKey) || 'openclaw_app';
+    const newCase = { ...createNewCase(currentType), ownerId: user.uid, author: user.displayName || '', caseType: currentType };
 
     // Create in DB immediately as requested
     try {
@@ -412,7 +495,7 @@ export default function App() {
 
       // Reload cases with new user context after a short delay
       setTimeout(() => {
-        refreshCasesOnce(loggedInUser.uid);
+        refreshCasesOnce(loggedInUser.uid, mapMenuToCaseType(menuKey));
       }, 500);
     } else {
       showToast('用户名或密码错误', 'error');
@@ -426,7 +509,7 @@ export default function App() {
 
     // 立即刷新案例列表（仅公开案例）
     try {
-      await refreshCasesOnce(undefined);
+      await refreshCasesOnce(undefined, mapMenuToCaseType(menuKey));
     } catch (err) {
       console.error('Failed to reload cases after logout:', err);
       setCases([]);
@@ -448,7 +531,7 @@ export default function App() {
   const handleResetDbConfig = async () => {
     const success = await apiService.resetDbConfig();
     if (success) {
-      showToast('已切换回文件存储模式');
+      showToast('数据库连接已断开');
       setShowDbConfig(false);
     } else {
       showToast('重置失败', 'error');
@@ -470,9 +553,46 @@ export default function App() {
     }
   };
 
+  const menuItems: Array<{ key: MenuKey; label: string; icon: React.ReactNode }> = [
+    { key: 'overview', label: '总览', icon: <LayoutDashboard className="w-4 h-4" /> },
+    { key: 'openclaw_app', label: 'OpenClaw应用案例', icon: <Rocket className="w-4 h-4" /> },
+    { key: 'tool_app', label: '小工具应用案例', icon: <Wrench className="w-4 h-4" /> },
+    { key: 'agent_app', label: 'Agent案例', icon: <Bot className="w-4 h-4" /> },
+    { key: 'rpa_app', label: 'RPA案例', icon: <Workflow className="w-4 h-4" /> },
+    { key: 'dashboard_app', label: '看板案例', icon: <PanelLeft className="w-4 h-4" /> },
+    { key: 'user_management', label: '用户管理', icon: <Users className="w-4 h-4" /> },
+  ];
+
+  const activeCaseType = mapMenuToCaseType(menuKey);
+  const showDashboard = menuKey === 'overview' || !!activeCaseType;
+
   return (
     <div className="min-h-screen bg-neutral-50 font-sans text-neutral-900">
       {activeView === 'dashboard' && (
+        <div className="flex min-h-screen">
+          <aside className="w-64 border-r border-neutral-200 bg-white p-4">
+            <div className="mb-4 px-2">
+              <h2 className="text-sm font-black text-neutral-800">{metadata.name}</h2>
+            </div>
+            <nav className="space-y-1">
+              {menuItems.map((item) => (
+                <button
+                  key={item.key}
+                  onClick={() => setMenuKey(item.key)}
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
+                    menuKey === item.key
+                      ? 'bg-brand-50 text-brand-700 font-semibold'
+                      : 'text-neutral-600 hover:bg-neutral-50'
+                  }`}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </nav>
+          </aside>
+          <main className="flex-1">
+            {showDashboard ? (
         <Dashboard
           cases={cases}
           user={user}
@@ -495,21 +615,16 @@ export default function App() {
           }}
           onDeleteCase={handleDelete}
           onLikeCase={handleLikeCase}
-          onOpenAnalytics={() => setActiveView('analytics')}
           onLogin={() => setShowLoginModal(true)}
           onLogout={handleLogout}
           onOpenDbConfig={() => setShowDbConfig(true)}
           onOpenUserManagement={() => setShowUserManagement(true)}
         />
-      )}
-
-      {activeView === 'analytics' && (
-        <AnalyticsPage
-          analytics={fullAnalytics}
-          loading={analyticsLoading}
-          error={analyticsError}
-          onBack={() => setActiveView('dashboard')}
-        />
+            ) : (
+              <div className="p-10 text-sm text-neutral-500">该模块即将上线，当前暂无可展示数据。</div>
+            )}
+          </main>
+        </div>
       )}
 
       {activeView === 'editor' && currentCase && (

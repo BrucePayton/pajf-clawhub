@@ -1,6 +1,5 @@
 import pptxgen from "pptxgenjs";
-import { Case } from "../types";
-import { FullAnalyticsData } from "./apiService";
+import { Case, CaseType } from "../types";
 
 const splitText = (text: string) => {
   if (!text) return [];
@@ -19,7 +18,90 @@ const splitText = (text: string) => {
   return parts;
 };
 
+type CaseTypePptxConfig = {
+  typeLabel: string;
+  sectionTitle1: string;
+  sectionTitle2: string;
+  sectionTitle3: string;
+  sectionTitle4: string;
+  highlightSection: "implementation" | "value";
+};
+
+const CASE_TYPE_PPTX_CONFIG: Record<CaseType, CaseTypePptxConfig> = {
+  openclaw_app: {
+    typeLabel: "OpenClaw应用案例",
+    sectionTitle1: "01. 业务背景与痛点",
+    sectionTitle2: "02. 实施步骤与方法",
+    sectionTitle3: "03. 价值效果",
+    sectionTitle4: "04. 下一步计划",
+    highlightSection: "implementation",
+  },
+  tool_app: {
+    typeLabel: "小工具应用案例",
+    sectionTitle1: "01. 设计背景与需求",
+    sectionTitle2: "02. 设计实现过程",
+    sectionTitle3: "03. 应用效果",
+    sectionTitle4: "04. 迭代计划",
+    highlightSection: "value",
+  },
+  rpa_app: {
+    typeLabel: "RPA应用案例",
+    sectionTitle1: "01. 流程背景与痛点",
+    sectionTitle2: "02. 自动化步骤方法",
+    sectionTitle3: "03. 上下游与收益",
+    sectionTitle4: "04. 持续优化",
+    highlightSection: "implementation",
+  },
+  agent_app: {
+    typeLabel: "Agent案例",
+    sectionTitle1: "01. 任务背景与挑战",
+    sectionTitle2: "02. Agent执行步骤",
+    sectionTitle3: "03. 关键点与效果",
+    sectionTitle4: "04. 能力演进计划",
+    highlightSection: "implementation",
+  },
+  dashboard_app: {
+    typeLabel: "看板案例",
+    sectionTitle1: "01. 分析目标与口径",
+    sectionTitle2: "02. 看板构建过程",
+    sectionTitle3: "03. 指标分析结果",
+    sectionTitle4: "04. 用法与推广",
+    highlightSection: "value",
+  },
+};
+
+const sanitizeCase = (caseData: Case) => {
+  const safeType: CaseType = caseData.caseType || "openclaw_app";
+  return {
+    ...caseData,
+    caseType: safeType,
+    title: caseData.title || "未命名案例",
+    subtitle: caseData.subtitle || "",
+    author: caseData.author || "未命名",
+    team: caseData.team || "未分配团队",
+    umNumber: caseData.umNumber || "-",
+    challenges: {
+      background: caseData.challenges?.background || "暂无背景描述",
+      painPoints: (caseData.challenges?.painPoints || []).filter(Boolean).slice(0, 5),
+      objectives: caseData.challenges?.objectives || "暂无目标描述",
+    },
+    implementation: {
+      steps: (caseData.implementation?.steps || []).slice(0, 3),
+    },
+    businessValue: {
+      metrics: (caseData.businessValue?.metrics || []).slice(0, 3),
+      footerNote: caseData.businessValue?.footerNote || "",
+    },
+    roadmap: {
+      items: (caseData.roadmap?.items || []).slice(0, 3),
+    },
+    caseTypeMeta: caseData.caseTypeMeta || {},
+  };
+};
+
 export const exportToPptx = async (caseData: Case) => {
+  const safeCase = sanitizeCase(caseData);
+  const config = CASE_TYPE_PPTX_CONFIG[safeCase.caseType];
   const pptx = new pptxgen();
   pptx.layout = "LAYOUT_16x9";
 
@@ -29,11 +111,11 @@ export const exportToPptx = async (caseData: Case) => {
   slide.background = { color: "F5F5F0" };
 
   // Header
-  const versionStr = (typeof caseData.version === 'number' && !isNaN(caseData.version)) 
-    ? caseData.version.toFixed(1) 
+  const versionStr = (typeof safeCase.version === 'number' && !isNaN(safeCase.version))
+    ? safeCase.version.toFixed(1)
     : '0.1';
   
-  const titleText = `${caseData.title} (v${versionStr})`;
+  const titleText = `${safeCase.title} (v${versionStr})`;
   slide.addText(splitText(titleText), {
     x: 0.5,
     y: 0.2,
@@ -44,7 +126,7 @@ export const exportToPptx = async (caseData: Case) => {
     color: "1A1A1A",
   });
 
-  slide.addText(splitText(caseData.subtitle), {
+  slide.addText(splitText(safeCase.subtitle), {
     x: 0.5,
     y: 0.6,
     w: 9,
@@ -54,7 +136,7 @@ export const exportToPptx = async (caseData: Case) => {
   });
 
   // Author & Organization Info
-  const authorInfo = `${caseData.organization} · ${caseData.team} · ${caseData.author} (${caseData.umNumber})`;
+  const authorInfo = `${safeCase.organization} · ${safeCase.team} · ${safeCase.author} (${safeCase.umNumber})`;
   slide.addText(splitText(authorInfo), {
     x: 0.5,
     y: 0.85,
@@ -62,6 +144,16 @@ export const exportToPptx = async (caseData: Case) => {
     h: 0.2,
     fontSize: 10,
     color: "999999",
+  });
+  slide.addText(splitText(config.typeLabel), {
+    x: 8.0,
+    y: 0.2,
+    w: 1.6,
+    h: 0.25,
+    fontSize: 10,
+    bold: true,
+    color: "EA580C",
+    align: "right",
   });
 
   // Section 01: Challenges (Left Column)
@@ -75,7 +167,7 @@ export const exportToPptx = async (caseData: Case) => {
     line: { color: "E5E5E5", width: 1 },
   });
 
-  slide.addText(splitText("01. 业务背景与痛点"), {
+  slide.addText(splitText(config.sectionTitle1), {
     x: 0.6,
     y: 1.2,
     w: 2.4,
@@ -95,7 +187,7 @@ export const exportToPptx = async (caseData: Case) => {
     color: "CCCCCC",
   });
 
-  slide.addText(splitText(caseData.challenges.background), {
+  slide.addText(splitText(safeCase.challenges.background), {
     x: 0.6,
     y: 1.8,
     w: 2.4,
@@ -115,7 +207,9 @@ export const exportToPptx = async (caseData: Case) => {
     color: "CCCCCC",
   });
 
-  const painPointsText = caseData.challenges.painPoints.map(p => `• ${p}`).join("\n");
+  const painPointsText = safeCase.challenges.painPoints.length
+    ? safeCase.challenges.painPoints.map((p) => `• ${p}`).join("\n")
+    : "• 暂无补充痛点";
   slide.addText(splitText(painPointsText), {
     x: 0.6,
     y: 2.9,
@@ -136,7 +230,7 @@ export const exportToPptx = async (caseData: Case) => {
     color: "CCCCCC",
   });
 
-  slide.addText(splitText(`“${caseData.challenges.objectives}”`), {
+  slide.addText(splitText(`“${safeCase.challenges.objectives}”`), {
     x: 0.6,
     y: 4.4,
     w: 2.4,
@@ -157,7 +251,7 @@ export const exportToPptx = async (caseData: Case) => {
     line: { color: "E5E5E5", width: 1 },
   });
 
-  slide.addText(splitText("02. 核心实施路径"), {
+  slide.addText(splitText(config.sectionTitle2), {
     x: 3.6,
     y: 1.2,
     w: 3.4,
@@ -167,7 +261,7 @@ export const exportToPptx = async (caseData: Case) => {
     color: "F97316",
   });
 
-  caseData.implementation.steps.forEach((step, index) => {
+  safeCase.implementation.steps.forEach((step, index) => {
     const yOffset = 1.6 + index * 1.1;
     
     slide.addText(splitText(`Step 0${index + 1}`), {
@@ -218,10 +312,10 @@ export const exportToPptx = async (caseData: Case) => {
     y: 1.0,
     w: 2.2,
     h: 2.5,
-    fill: { color: "1A1A1A" },
+    fill: { color: config.highlightSection === "value" ? "9A3412" : "1A1A1A" },
   });
 
-  slide.addText(splitText("03. 业务价值产出"), {
+  slide.addText(splitText(config.sectionTitle3), {
     x: 7.6,
     y: 1.2,
     w: 1.8,
@@ -231,7 +325,11 @@ export const exportToPptx = async (caseData: Case) => {
     color: "F97316",
   });
 
-  caseData.businessValue.metrics.forEach((metric, index) => {
+  const metricsToRender = safeCase.businessValue.metrics.length
+    ? safeCase.businessValue.metrics
+    : [{ id: "m0", label: "效果指标", value: "-", subtext: "暂无指标数据", icon: "trending-up" as const }];
+
+  metricsToRender.forEach((metric, index) => {
     const yOffset = 1.6 + index * 0.7;
     
     // Add icon if available
@@ -281,7 +379,7 @@ export const exportToPptx = async (caseData: Case) => {
     line: { color: "E5E5E5", width: 1 },
   });
 
-  slide.addText(splitText("04. 下一步工作计划"), {
+  slide.addText(splitText(config.sectionTitle4), {
     x: 7.6,
     y: 3.9,
     w: 1.8,
@@ -291,7 +389,11 @@ export const exportToPptx = async (caseData: Case) => {
     color: "F97316",
   });
 
-  caseData.roadmap.items.forEach((item, index) => {
+  const roadmapToRender = safeCase.roadmap.items.length
+    ? safeCase.roadmap.items
+    : [{ id: "r0", task: "后续计划", content: "待补充", date: "TBD" }];
+
+  roadmapToRender.forEach((item, index) => {
     const yOffset = 4.3 + index * 0.3;
     slide.addText(splitText(`[${item.task}] ${item.content}`), {
       x: 7.6,
@@ -320,7 +422,7 @@ export const exportToPptx = async (caseData: Case) => {
     const url = window.URL.createObjectURL(blob as Blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${caseData.title.replace(/[\\/:*?"<>|]/g, '_')}.pptx`;
+    a.download = `${safeCase.title.replace(/[\\/:*?"<>|]/g, '_')}.pptx`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -328,99 +430,7 @@ export const exportToPptx = async (caseData: Case) => {
   } catch (err) {
     console.error("PPTX write error:", err);
     // Fallback to library's internal method if blob fails
-    await pptx.writeFile({ fileName: `${caseData.title.replace(/[\\/:*?"<>|]/g, '_')}.pptx` });
+    await pptx.writeFile({ fileName: `${safeCase.title.replace(/[\\/:*?"<>|]/g, '_')}.pptx` });
   }
 };
 
-interface AnalyticsChartImage {
-  key: string;
-  title: string;
-  imageDataUrl: string;
-}
-
-export const exportAnalyticsToPptx = async (
-  analytics: FullAnalyticsData | null,
-  chartImages: AnalyticsChartImage[]
-) => {
-  const pptx = new pptxgen();
-  pptx.layout = "LAYOUT_WIDE";
-
-  const now = new Date();
-  const dateLabel = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const subtitle = analytics
-    ? `总案例 ${analytics.totals.cases} ｜ 已发布 ${analytics.totals.published} ｜ 组织 ${analytics.totals.regions}`
-    : "分析数据快照";
-
-  const cover = pptx.addSlide();
-  cover.background = { color: "F8FAFC" };
-  cover.addText("OpenClaw 分析看板导出", {
-    x: 0.6,
-    y: 0.6,
-    w: 12,
-    h: 0.8,
-    fontSize: 30,
-    bold: true,
-    color: "0F172A",
-  });
-  cover.addText(subtitle, {
-    x: 0.6,
-    y: 1.5,
-    w: 12,
-    h: 0.4,
-    fontSize: 14,
-    color: "475569",
-  });
-  cover.addText(`导出时间：${dateLabel}`, {
-    x: 0.6,
-    y: 1.95,
-    w: 12,
-    h: 0.3,
-    fontSize: 11,
-    color: "64748B",
-  });
-
-  for (const chart of chartImages) {
-    const slide = pptx.addSlide();
-    slide.background = { color: "FFFFFF" };
-    slide.addText(chart.title, {
-      x: 0.5,
-      y: 0.3,
-      w: 12.3,
-      h: 0.5,
-      fontSize: 18,
-      bold: true,
-      color: "111827",
-    });
-    slide.addText(`图表标识：${chart.key}`, {
-      x: 0.5,
-      y: 0.78,
-      w: 12.3,
-      h: 0.25,
-      fontSize: 10,
-      color: "6B7280",
-    });
-    slide.addImage({
-      data: chart.imageDataUrl,
-      x: 0.5,
-      y: 1.1,
-      w: 12.3,
-      h: 5.7,
-    });
-  }
-
-  const filename = `OpenClaw_Analytics_${dateLabel}.pptx`;
-  try {
-    const blob = await pptx.write({ outputType: "blob" });
-    const url = window.URL.createObjectURL(blob as Blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-  } catch (err) {
-    console.error("Analytics PPTX write error:", err);
-    await pptx.writeFile({ fileName: filename });
-  }
-};

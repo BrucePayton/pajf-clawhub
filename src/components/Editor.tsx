@@ -1,7 +1,71 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, Save, Globe, Target, Zap, TrendingUp, Calendar, Plus, Trash2, Clock, CheckCircle, Rocket, Layout, ChevronRight, Info, Upload, Image as ImageIcon, Lock, Eye } from 'lucide-react';
-import { Case, CaseStep, MetricCard, RoadmapItem } from '../types';
+import { Case, CaseStep, MetricCard, RoadmapItem, CaseType } from '../types';
+
+type CaseTypeConfig = {
+  label: string;
+  focusHint: string;
+  challengeLabel: string;
+  challengePlaceholder: string;
+  implementationTitle: string;
+  stepTitlePlaceholder: string;
+  stepDescPlaceholder: string;
+  metricTitle: string;
+};
+
+const CASE_TYPE_CONFIG: Record<CaseType, CaseTypeConfig> = {
+  openclaw_app: {
+    label: 'OpenClaw应用案例',
+    focusHint: '侧重步骤方法，建议按实施顺序填写关键步骤。',
+    challengeLabel: '业务背景',
+    challengePlaceholder: '描述流程背景、当前方式与优化起点...',
+    implementationTitle: '实施步骤与方法',
+    stepTitlePlaceholder: '步骤标题（如：任务创建）',
+    stepDescPlaceholder: '描述操作方法、输入输出与注意事项',
+    metricTitle: '实施效果',
+  },
+  tool_app: {
+    label: '小工具应用案例',
+    focusHint: '侧重设计和效果，建议突出设计思路与可复用价值。',
+    challengeLabel: '设计背景',
+    challengePlaceholder: '描述工具设计动机、用户场景与约束...',
+    implementationTitle: '设计实现过程',
+    stepTitlePlaceholder: '设计阶段（如：原型设计）',
+    stepDescPlaceholder: '描述设计方案、实现方式与验证过程',
+    metricTitle: '效果评估',
+  },
+  rpa_app: {
+    label: 'RPA应用案例',
+    focusHint: '侧重步骤方法及上下游系统，流程关系要清晰。',
+    challengeLabel: '流程背景',
+    challengePlaceholder: '描述流程瓶颈、人工痛点与自动化目标...',
+    implementationTitle: '自动化实施步骤',
+    stepTitlePlaceholder: '流程步骤（如：数据抓取）',
+    stepDescPlaceholder: '描述机器人步骤、规则与异常处理',
+    metricTitle: '自动化收益',
+  },
+  agent_app: {
+    label: 'Agent案例',
+    focusHint: '侧重步骤方法及关键点，建议提炼可复用策略。',
+    challengeLabel: '任务背景',
+    challengePlaceholder: '描述任务目标、边界条件与挑战...',
+    implementationTitle: 'Agent执行步骤',
+    stepTitlePlaceholder: '步骤标题（如：意图识别）',
+    stepDescPlaceholder: '描述关键策略、上下文管理与判定逻辑',
+    metricTitle: '关键效果',
+  },
+  dashboard_app: {
+    label: '看板案例',
+    focusHint: '侧重数据维度、指标分析与用法，保证可读可用。',
+    challengeLabel: '分析背景',
+    challengePlaceholder: '描述业务分析目标、看板对象与问题...',
+    implementationTitle: '看板构建步骤',
+    stepTitlePlaceholder: '构建步骤（如：指标建模）',
+    stepDescPlaceholder: '描述维度设计、口径定义与可视化方案',
+    metricTitle: '指标分析结果',
+  },
+};
 
 interface EditorProps {
   caseData: Case;
@@ -20,6 +84,20 @@ export const Editor: React.FC<EditorProps> = ({
   onPublish,
   showToast
 }) => {
+  const caseType: CaseType = caseData.caseType || 'openclaw_app';
+  const caseTypeConfig = CASE_TYPE_CONFIG[caseType];
+  const meta = caseData.caseTypeMeta || {};
+
+  const setMeta = (partial: Record<string, any>) => {
+    setCaseData({
+      ...caseData,
+      caseTypeMeta: {
+        ...meta,
+        ...partial,
+      },
+    });
+  };
+
   const compressImageToDataUrl = (file: File, maxEdge: number, quality: number): Promise<string> =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -125,7 +203,7 @@ export const Editor: React.FC<EditorProps> = ({
             </div>
             <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest flex items-center gap-1.5">
               <Globe className="w-3 h-3" />
-              {caseData.organization || '未指定组织'}
+              {caseData.organization || '未指定组织'} · {caseTypeConfig.label}
             </p>
           </div>
         </div>
@@ -254,14 +332,15 @@ export const Editor: React.FC<EditorProps> = ({
             </div>
             <h2 className="text-lg font-bold text-neutral-900">核心挑战</h2>
           </div>
+          <p className="text-xs text-neutral-500 -mt-2">{caseTypeConfig.focusHint}</p>
           <div className="space-y-5">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider ml-1">背景描述</label>
+              <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider ml-1">{caseTypeConfig.challengeLabel}</label>
               <textarea 
                 value={caseData.challenges?.background ?? ''}
                 onChange={(e) => setCaseData({ ...caseData, challenges: { ...caseData.challenges, background: e.target.value } })}
                 className="input-modern min-h-[100px] resize-none"
-                placeholder="描述业务背景..."
+                placeholder={caseTypeConfig.challengePlaceholder}
               />
             </div>
             <div className="space-y-1.5">
@@ -292,7 +371,7 @@ export const Editor: React.FC<EditorProps> = ({
               <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
                 <Layout className="w-5 h-5 text-blue-500" />
               </div>
-              <h2 className="text-lg font-bold text-neutral-900">实施方案</h2>
+              <h2 className="text-lg font-bold text-neutral-900">{caseTypeConfig.implementationTitle}</h2>
             </div>
             <button 
               onClick={addStep}
@@ -324,7 +403,7 @@ export const Editor: React.FC<EditorProps> = ({
                         setCaseData({ ...caseData, implementation: { ...caseData.implementation, steps: newSteps } });
                       }}
                       className="w-full px-4 py-2 bg-white border border-neutral-200/60 rounded-lg focus:border-brand-500 transition-all outline-none font-bold text-sm"
-                      placeholder="步骤标题"
+                      placeholder={caseTypeConfig.stepTitlePlaceholder}
                     />
                     <textarea 
                       value={step.description}
@@ -334,7 +413,7 @@ export const Editor: React.FC<EditorProps> = ({
                         setCaseData({ ...caseData, implementation: { ...caseData.implementation, steps: newSteps } });
                       }}
                       className="w-full px-4 py-2 bg-white border border-neutral-200/60 rounded-lg focus:border-brand-500 transition-all outline-none text-xs text-neutral-500 min-h-[60px] resize-none"
-                      placeholder="详细描述"
+                      placeholder={caseTypeConfig.stepDescPlaceholder}
                     />
                   </div>
                   <div className="flex flex-col gap-2 items-center">
@@ -386,7 +465,7 @@ export const Editor: React.FC<EditorProps> = ({
               <div className="w-10 h-10 bg-brand-50 rounded-xl flex items-center justify-center">
                 <Zap className="w-5 h-5 text-brand-500" />
               </div>
-              <h2 className="text-lg font-bold text-neutral-900">业务价值</h2>
+              <h2 className="text-lg font-bold text-neutral-900">{caseTypeConfig.metricTitle}</h2>
             </div>
             <button 
               onClick={addMetric}
@@ -469,6 +548,85 @@ export const Editor: React.FC<EditorProps> = ({
             ))}
           </div>
         </section>
+
+        {(caseType === 'tool_app' || caseType === 'rpa_app' || caseType === 'agent_app' || caseType === 'dashboard_app') && (
+          <section className="card-modern p-8 space-y-6">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 text-orange-500" />
+              </div>
+              <h2 className="text-lg font-bold text-neutral-900">类型关键补充</h2>
+            </div>
+
+            {caseType === 'tool_app' && (
+              <div className="grid grid-cols-1 gap-4">
+                <textarea
+                  value={meta.designHighlights ?? ''}
+                  onChange={(e) => setMeta({ designHighlights: e.target.value })}
+                  className="input-modern min-h-[90px] resize-none"
+                  placeholder="设计要点：架构设计、交互设计、可维护性考虑..."
+                />
+                <textarea
+                  value={meta.effectSummary ?? ''}
+                  onChange={(e) => setMeta({ effectSummary: e.target.value })}
+                  className="input-modern min-h-[90px] resize-none"
+                  placeholder="效果总结：性能提升、效率提升、用户反馈..."
+                />
+              </div>
+            )}
+
+            {caseType === 'rpa_app' && (
+              <div className="grid grid-cols-1 gap-4">
+                <input
+                  value={(meta.upstreamSystems ?? []).join(', ')}
+                  onChange={(e) => setMeta({ upstreamSystems: e.target.value.split(',').map((x: string) => x.trim()).filter(Boolean) })}
+                  className="input-modern"
+                  placeholder="上游系统（逗号分隔）：如 CRM, OA"
+                />
+                <input
+                  value={(meta.downstreamSystems ?? []).join(', ')}
+                  onChange={(e) => setMeta({ downstreamSystems: e.target.value.split(',').map((x: string) => x.trim()).filter(Boolean) })}
+                  className="input-modern"
+                  placeholder="下游系统（逗号分隔）：如 财务系统, 数据仓库"
+                />
+              </div>
+            )}
+
+            {caseType === 'agent_app' && (
+              <div className="grid grid-cols-1 gap-4">
+                <input
+                  value={(meta.keyPoints ?? []).join(', ')}
+                  onChange={(e) => setMeta({ keyPoints: e.target.value.split(',').map((x: string) => x.trim()).filter(Boolean) })}
+                  className="input-modern"
+                  placeholder="关键点（逗号分隔）：如 提示词设计, 记忆策略, 风险控制"
+                />
+              </div>
+            )}
+
+            {caseType === 'dashboard_app' && (
+              <div className="grid grid-cols-1 gap-4">
+                <input
+                  value={(meta.dataDimensions ?? []).join(', ')}
+                  onChange={(e) => setMeta({ dataDimensions: e.target.value.split(',').map((x: string) => x.trim()).filter(Boolean) })}
+                  className="input-modern"
+                  placeholder="数据维度（逗号分隔）：如 时间, 组织, 产品"
+                />
+                <input
+                  value={(meta.analysisMethods ?? []).join(', ')}
+                  onChange={(e) => setMeta({ analysisMethods: e.target.value.split(',').map((x: string) => x.trim()).filter(Boolean) })}
+                  className="input-modern"
+                  placeholder="指标分析方式（逗号分隔）：如 趋势分析, 结构分析"
+                />
+                <textarea
+                  value={meta.usageGuide ?? ''}
+                  onChange={(e) => setMeta({ usageGuide: e.target.value })}
+                  className="input-modern min-h-[90px] resize-none"
+                  placeholder="用法说明：看板入口、筛选路径、下钻方式..."
+                />
+              </div>
+            )}
+          </section>
+        )}
 
         <section className="card-modern p-8 space-y-6">
           <div className="flex items-center justify-between mb-2">

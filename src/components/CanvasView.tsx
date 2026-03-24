@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Download, Globe, Target, Zap, TrendingUp, Calendar, Clock, CheckCircle, ChevronRight, Layout, FileText, X, ZoomIn } from 'lucide-react';
 import { Case } from '../types';
 import { exportToPptx } from '../services/pptxService';
+import { exportElementToPdf } from '../services/pdfService';
 
 interface CanvasViewProps {
   caseData: Case;
@@ -18,6 +19,7 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
   showToast
 }) => {
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  const exportAreaRef = useRef<HTMLDivElement | null>(null);
 
   const handleExport = async () => {
     try {
@@ -30,8 +32,20 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handleExportPdf = async () => {
+    if (!exportAreaRef.current) {
+      showToast('导出失败，请稍后重试', 'error');
+      return;
+    }
+    try {
+      showToast('正在生成 PDF...');
+      await exportElementToPdf(exportAreaRef.current, caseData.title);
+      showToast('PDF 导出成功');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      showToast('PDF 导出失败，已切换浏览器打印模式', 'error');
+      window.print();
+    }
   };
 
   return (
@@ -68,12 +82,12 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
             <FileText className="w-4 h-4 text-brand-500" />
             编辑案例
           </button>
-          <button 
-            onClick={handlePrint}
+          <button
+            onClick={handleExportPdf}
             className="btn-secondary text-sm"
           >
             <Layout className="w-4 h-4 text-brand-500" />
-            打印 PDF
+            导出 PDF
           </button>
           <button 
             onClick={handleExport}
@@ -85,7 +99,7 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
         </div>
       </header>
 
-      <main className="flex-1 grid grid-cols-12 gap-6 print:block print:space-y-10 min-h-0">
+      <main ref={exportAreaRef} className="flex-1 grid grid-cols-12 gap-6 print:block print:space-y-10 min-h-0">
         {/* Left Column: Challenges & Value */}
         <div className="col-span-12 lg:col-span-3 flex flex-col gap-6 print:col-span-12 min-h-0">
           <motion.section 

@@ -15,7 +15,7 @@ OpenClawCaseCollection（基于 React + Vite 的案件管理与展示系统）
 
 ### 设计目标
 - 提供可视化和可编辑的案件信息管理界面
-- 支持本地和远程数据库配置（MySQL）
+- 统一使用 MySQL 作为唯一存储
 - 实现动态 PPT 导出与下载（基于 `pptxgenjs`）
 - 支持 Socket.io 实时推送与协作更新
 - 集成 AI 生成能力（通过 `@google/genai` API）
@@ -29,7 +29,7 @@ OpenClawCaseCollection（基于 React + Vite 的案件管理与展示系统）
 - `server.ts`: Express + Vite 统一后端 + 业务逻辑 + 代理
 
 ### 功能特性
-1. 数据 CRUD：增删改查案件数据（本地 `data/cases.json` 或 MySQL）
+1. 数据 CRUD：增删改查案件数据（仅 MySQL）
 2. 实时更新：Socket.io 实现多人协作通知和页面刷新
 3. PPT 导出：一键从案件数据生成 PPT 文件
 4. 环境配置：支持 `GEMINI_API_KEY`、MySQL 连接配置
@@ -65,12 +65,10 @@ OpenClawCaseCollection（基于 React + Vite 的案件管理与展示系统）
 - `npm run lint`：ts 类型检查
 - `npm run dev`：开发模式（watch + vite）
 - `docker logs openclaw-nginx --tail 50`：查看 nginx 代理日志
+- 说明：当前版本不再支持文件存储回退，MySQL 不可用时服务会启动失败。
 
 ## 目录结构
 ```text
-├── data/
-│   ├── cases.json
-│   └── db-config.json
 ├── src/
 │   ├── components/
 │   └── services/
