@@ -2,6 +2,7 @@ import { io } from 'socket.io-client';
 
 const API_URL = window.location.origin;
 const socket = io(API_URL);
+const MAX_CASE_PAYLOAD_BYTES = 18 * 1024 * 1024;
 
 export interface User {
   uid: string;
@@ -76,10 +77,16 @@ export const apiService = {
       headers['X-User-Role'] = currentUser.role || 'user';
     }
 
+    const payload = JSON.stringify(caseData);
+    const payloadSizeBytes = new TextEncoder().encode(payload).length;
+    if (payloadSizeBytes > MAX_CASE_PAYLOAD_BYTES) {
+      throw new Error('CASE_PAYLOAD_TOO_LARGE');
+    }
+
     const response = await fetch(`${API_URL}/api/cases`, {
       method: 'POST',
       headers,
-      body: JSON.stringify(caseData)
+      body: payload
     });
     return response.ok;
   },

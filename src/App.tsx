@@ -280,13 +280,21 @@ export default function App() {
     const newCase = { ...createNewCase(), ownerId: user.uid, author: user.displayName || '' };
 
     // Create in DB immediately as requested
-    const success = await apiService.saveCase(newCase, user);
-    if (success) {
-      setCurrentCase(newCase);
-      setActiveView('editor');
-      showToast('新案例已创建并同步至数据库');
-    } else {
-      showToast('创建失败，请检查数据库连接', 'error');
+    try {
+      const success = await apiService.saveCase(newCase, user);
+      if (success) {
+        setCurrentCase(newCase);
+        setActiveView('editor');
+        showToast('新案例已创建并同步至数据库');
+      } else {
+        showToast('创建失败，请检查数据库连接', 'error');
+      }
+    } catch (error: any) {
+      if (error?.message === 'CASE_PAYLOAD_TOO_LARGE') {
+        showToast('内容体积过大，请减少步骤图片数量或更换更小图片。', 'error');
+      } else {
+        showToast('创建失败，请检查网络或数据库连接', 'error');
+      }
     }
   };
 
@@ -329,12 +337,20 @@ export default function App() {
     };
 
     console.log('Saving case:', updatedCase);
-    const success = await apiService.saveCase(updatedCase, user);
-    if (success) {
-      showToast('保存成功');
-      setActiveView('dashboard');
-    } else {
-      showToast('保存失败，请检查网络或数据库连接', 'error');
+    try {
+      const success = await apiService.saveCase(updatedCase, user);
+      if (success) {
+        showToast('保存成功');
+        setActiveView('dashboard');
+      } else {
+        showToast('保存失败，请检查网络或数据库连接', 'error');
+      }
+    } catch (error: any) {
+      if (error?.message === 'CASE_PAYLOAD_TOO_LARGE') {
+        showToast('保存失败：内容体积过大，请减少步骤图片数量或更换更小图片。', 'error');
+      } else {
+        showToast('保存失败，请检查网络或数据库连接', 'error');
+      }
     }
   };
 
@@ -361,13 +377,21 @@ export default function App() {
     };
 
     console.log('Publishing case:', publishedCase);
-    const success = await apiService.saveCase(publishedCase, user);
-    if (success) {
-      setCurrentCase(publishedCase);
-      setActiveView('canvas');
-      showToast(publishedCase.isPublic ? '发布成功！案例已公开' : '发布成功！案例已保存为私密');
-    } else {
-      showToast('发布失败，请检查网络或数据库连接', 'error');
+    try {
+      const success = await apiService.saveCase(publishedCase, user);
+      if (success) {
+        setCurrentCase(publishedCase);
+        setActiveView('canvas');
+        showToast(publishedCase.isPublic ? '发布成功！案例已公开' : '发布成功！案例已保存为私密');
+      } else {
+        showToast('发布失败，请检查网络或数据库连接', 'error');
+      }
+    } catch (error: any) {
+      if (error?.message === 'CASE_PAYLOAD_TOO_LARGE') {
+        showToast('发布失败：内容体积过大，请减少步骤图片数量或更换更小图片。', 'error');
+      } else {
+        showToast('发布失败，请检查网络或数据库连接', 'error');
+      }
     }
   };
 

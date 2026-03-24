@@ -20,7 +20,37 @@ export const Editor: React.FC<EditorProps> = ({
   onPublish,
   showToast
 }) => {
-  const handleImageUpload = (index: number, file: File) => {
+  const compressImageToDataUrl = (file: File, maxEdge: number, quality: number): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('图片读取失败'));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('图片解析失败'));
+        img.onload = () => {
+          const longerEdge = Math.max(img.width, img.height) || 1;
+          const scale = Math.min(1, maxEdge / longerEdge);
+          const targetWidth = Math.max(1, Math.round(img.width * scale));
+          const targetHeight = Math.max(1, Math.round(img.height * scale));
+
+          const canvas = document.createElement('canvas');
+          canvas.width = targetWidth;
+          canvas.height = targetHeight;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('图片压缩失败'));
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.src = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+
+  const handleImageUpload = async (index: number, file: File) => {
     if (!file) return;
 
     // Check file size (limit to 10MB)
@@ -29,9 +59,13 @@ export const Editor: React.FC<EditorProps> = ({
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
+    try {
+      let base64String = await compressImageToDataUrl(file, 1600, 0.82);
+      // 兜底：如果仍然偏大，再压缩一次以降低请求体体积
+      if (base64String.length > 900 * 1024) {
+        base64String = await compressImageToDataUrl(file, 1280, 0.72);
+      }
+
       const newSteps = [...(caseData.implementation?.steps || [])];
       newSteps[index].imageUrl = base64String;
       setCaseData((prev: any) => ({
@@ -41,8 +75,10 @@ export const Editor: React.FC<EditorProps> = ({
           steps: newSteps
         }
       }));
-    };
-    reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Failed to process image:', error);
+      showToast('图片处理失败，请重试。', 'error');
+    }
   };
   const addStep = () => {
     const newStep: CaseStep = { id: Date.now().toString(), title: '', description: '', imageUrl: '' };
