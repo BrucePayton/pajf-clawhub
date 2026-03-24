@@ -66,10 +66,19 @@ export const apiService = {
     return [];
   },
 
-  saveCase: async (caseData: any): Promise<boolean> => {
+  saveCase: async (caseData: any, user?: User | null): Promise<boolean> => {
+    const savedUser = localStorage.getItem('internal_user');
+    const currentUser = user || (savedUser ? JSON.parse(savedUser) : null);
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (currentUser) {
+      headers['X-User-ID'] = currentUser.uid;
+      headers['X-User-Role'] = currentUser.role || 'user';
+    }
+
     const response = await fetch(`${API_URL}/api/cases`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(caseData)
     });
     return response.ok;

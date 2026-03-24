@@ -227,9 +227,7 @@ export default function App() {
 
     // Load cases based on user authentication status
     const loadCases = () => {
-      const savedUser = localStorage.getItem('internal_user');
-      const userId = savedUser ? JSON.parse(savedUser).uid : undefined;
-
+      const userId = user?.uid;
       apiService.getCases(userId).then(data => {
         if (data.length === 0) {
           setCases(INITIAL_CASES);
@@ -244,22 +242,18 @@ export default function App() {
     loadCases();
 
     // Listen for updates from other users
-    const unsubscribe = apiService.onCasesUpdated((updatedCases) => {
-      // Prevent immediate re-trigger after initial load
-      if (Date.now() - lastLoadedTime < 1000) return;
+    const unsubscribe = apiService.onCasesUpdated(() => {
+      // 防抖：3 秒内不重复刷新
+      if (Date.now() - lastLoadedTime < 3000) return;
 
-      // Only update if user is still logged in
-      const savedUser = localStorage.getItem('internal_user');
-      const userId = savedUser ? JSON.parse(savedUser).uid : undefined;
+      // 只在 dashboard 视图时刷新
+      if (activeView !== 'dashboard') return;
 
-      // Re-fetch cases with current user context
-      apiService.getCases(userId).then(data => {
-        setCases(data);
-      });
+      loadCases();
     });
 
     return () => unsubscribe();
-  }, [isAuthReady, lastLoadedTime]);
+  }, [isAuthReady, user, activeView, lastLoadedTime]);
 
   // Load DB Config
   useEffect(() => {
@@ -278,9 +272,9 @@ export default function App() {
       return;
     }
     const newCase = { ...createNewCase(), ownerId: user.uid, author: user.displayName || '' };
-    
+
     // Create in DB immediately as requested
-    const success = await apiService.saveCase(newCase);
+    const success = await apiService.saveCase(newCase, user);
     if (success) {
       setCurrentCase(newCase);
       setActiveView('editor');
@@ -315,13 +309,13 @@ export default function App() {
 
   const handleSave = async () => {
     if (!currentCase) return;
-    
+
     if (!user) {
       setShowLoginModal(true);
       showToast('请先登录以保存案例', 'error');
       return;
     }
-    
+
     const updatedCase = {
       ...currentCase,
       lastModified: Date.now(),
@@ -329,7 +323,7 @@ export default function App() {
     };
 
     console.log('Saving case:', updatedCase);
-    const success = await apiService.saveCase(updatedCase);
+    const success = await apiService.saveCase(updatedCase, user);
     if (success) {
       showToast('保存成功');
       setActiveView('dashboard');
@@ -361,7 +355,7 @@ export default function App() {
     };
 
     console.log('Publishing case:', publishedCase);
-    const success = await apiService.saveCase(publishedCase);
+    const success = await apiService.saveCase(publishedCase, user);
     if (success) {
       setCurrentCase(publishedCase);
       setActiveView('canvas');

@@ -56,13 +56,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={onOpenDbConfig}
-              className="p-3 bg-white text-neutral-400 rounded-xl hover:text-brand-500 hover:shadow-sm transition-all border border-neutral-200"
-              title="数据库配置"
-            >
-              <Database className="w-5 h-5" />
-            </button>
+            {/* 数据库配置按钮：只显示给初始 admin 用户 (admin-1) */}
+            {user?.uid === 'admin-1' && (
+              <button
+                onClick={onOpenDbConfig}
+                className="p-3 bg-white text-neutral-400 rounded-xl hover:text-brand-500 hover:shadow-sm transition-all border border-neutral-200"
+                title="数据库配置"
+              >
+                <Database className="w-5 h-5" />
+              </button>
+            )}
             {user?.role === 'admin' && (
               <button
                 onClick={onOpenUserManagement}
@@ -220,21 +223,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     </td>
                     <td className="px-8 py-6">
                       <div className="flex items-center justify-end gap-2">
-                        <button 
+                        <button
                           onClick={() => onViewCanvas(c)}
                           className="p-2.5 text-neutral-400 hover:text-brand-500 hover:bg-brand-50 rounded-xl transition-all"
                           title="查看画布"
                         >
                           <Eye className="w-4.5 h-4.5" />
                         </button>
-                        <button 
-                          onClick={() => onEditCase(c)}
-                          className="p-2.5 text-neutral-400 hover:text-brand-500 hover:bg-brand-50 rounded-xl transition-all"
-                          title="编辑"
-                        >
-                          <Edit3 className="w-4.5 h-4.5" />
-                        </button>
-                        <button 
+                        {/* 编辑按钮：只显示给案例所有者或管理员 */}
+                        {(user?.uid === c.ownerId || user?.role === 'admin') && (
+                          <button
+                            onClick={() => onEditCase(c)}
+                            className="p-2.5 text-neutral-400 hover:text-brand-500 hover:bg-brand-50 rounded-xl transition-all"
+                            title="编辑"
+                          >
+                            <Edit3 className="w-4.5 h-4.5" />
+                          </button>
+                        )}
+                        <button
                           onClick={() => onDeleteCase(c.id)}
                           className="p-2.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
                           title="删除"

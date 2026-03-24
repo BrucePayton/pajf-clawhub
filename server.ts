@@ -156,8 +156,8 @@ async function startServer() {
   });
 
   app.use(cors());
-  app.use(express.json({ limit: '50mb' }));
-  app.use(express.urlencoded({ limit: '50mb', extended: true }));
+  app.use(express.json({ limit: '100mb' }));
+  app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
   // --- API Routes ---
 
@@ -480,7 +480,16 @@ async function startServer() {
   app.post('/api/cases', async (req, res) => {
     try {
       const newCase = req.body;
+      // 从请求头获取用户身份信息
+      const userId = req.headers['x-user-id'] as string;
+      const userRole = req.headers['x-user-role'] as string;
       let ownerId = newCase.ownerId || null;
+
+      // 权限验证：用户只能创建/编辑自己的案例，admin 可以编辑所有案例
+      if (ownerId && userId && ownerId !== userId && userRole !== 'admin') {
+        return res.status(403).json({ success: false, message: '无权修改他人案例' });
+      }
+
       // 使用严格类型转换确保 isPublic 为 boolean 值，避免 undefined 被转为 false
       const isPublic = newCase.isPublic === true;
       console.log(`[Save Case] id=${newCase.id}, isPublic=${isPublic}, inputType=${typeof newCase.isPublic}, inputValue=${newCase.isPublic}`);
