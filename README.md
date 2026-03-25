@@ -69,7 +69,7 @@ OpenClawCaseCollection（基于 React + Vite 的案件管理与展示系统）
 当前 Compose 链路为：
 - `web`：Nginx 静态托管 + 反向代理
 - `api`：Node/Express 服务，监听 `3010`
-- `mysql-server`：MySQL 8.4，初始化数据库 `OpenclawAppPlatform`
+- `mysql-server`：MySQL latest，初始化数据库 `OpenclawAppPlatform`
 
 ## 验证与调试
 - `npm run lint`：TypeScript 类型检查

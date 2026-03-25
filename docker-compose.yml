@@ -51,7 +51,7 @@ services:
 
   # MySQL 数据库服务
   mysql-server:
-    image: mysql:8.4
+    image: mysql:latest
     container_name: mysql-server
     ports:
       - "3306:3306"
