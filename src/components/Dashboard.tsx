@@ -197,18 +197,43 @@ export const Dashboard: React.FC<DashboardProps> = ({
   }, [cases, orgStats, caseTypeStats]);
 
   const handleExportExcel = React.useCallback(() => {
+    const joinLines = (arr?: string[]) => (arr || []).filter(Boolean).join('\n');
+    const fmtSteps = (steps?: { title: string; description: string }[]) =>
+      (steps || []).map((s, i) => `步骤${i + 1}: ${s.title || ''}${s.description ? ' — ' + s.description : ''}`).join('\n');
+    const fmtMetrics = (metrics?: { label: string; value: string; subtext: string }[]) =>
+      (metrics || []).map((m) => `${m.label}: ${m.value}${m.subtext ? '（' + m.subtext + '）' : ''}`).join('\n');
+    const fmtRoadmap = (items?: { task: string; content: string; date: string }[]) =>
+      (items || []).map((r) => `[${r.date}] ${r.task}: ${r.content}`).join('\n');
+
     const rows = filteredCases.map((c) => ({
       标题: c.title,
+      副标题: c.subtitle || '',
       案例类型: caseTypeLabelMap[c.caseType || 'openclaw_app'],
       组织: c.organization,
+      团队: c.team || '',
       创建人: c.author?.trim() || '未命名用户',
+      UM号: c.umNumber || '',
       状态: c.status === 'published' ? '已发布' : '草稿',
       公开性: c.isPublic === true ? '公开' : '私密',
       点赞数: c.likeCount ?? 0,
       版本: (c.version ?? 0).toFixed(1),
       更新时间: new Date(c.lastModified ?? Date.now()).toLocaleString(),
+      业务背景: c.challenges?.background || '',
+      痛点: joinLines(c.challenges?.painPoints),
+      目标: c.challenges?.objectives || '',
+      实施步骤: fmtSteps(c.implementation?.steps),
+      效果指标: fmtMetrics(c.businessValue?.metrics),
+      效果备注: c.businessValue?.footerNote || '',
+      未来规划: fmtRoadmap(c.roadmap?.items),
     }));
     const worksheet = XLSX.utils.json_to_sheet(rows);
+
+    const colWidths = [
+      28, 20, 10, 10, 10, 10, 10, 6, 6, 6, 6, 18,
+      40, 30, 30, 50, 40, 20, 40,
+    ];
+    worksheet['!cols'] = colWidths.map((w) => ({ wch: w }));
+
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, '案例列表');
     const normalize = (v: string) =>
