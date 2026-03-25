@@ -184,7 +184,7 @@ export default function App() {
   const [cases, setCases] = useState<Case[]>([]);
   const [activeView, setActiveView] = useState<'dashboard' | 'editor' | 'canvas'>('dashboard');
   const [currentCase, setCurrentCase] = useState<Case | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'loading'; duration: number } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [user, setUser] = useState<User | null>(null);
@@ -203,9 +203,12 @@ export default function App() {
   const activeViewRef = React.useRef(activeView);
   const showLoginModalRef = React.useRef(showLoginModal);
 
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+  const toastTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = (message: string, type: 'success' | 'error' | 'info' | 'loading' = 'success') => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    const duration = type === 'error' ? 4500 : type === 'loading' ? 30000 : 2500;
+    setToast({ message, type, duration });
+    toastTimerRef.current = setTimeout(() => { setToast(null); toastTimerRef.current = null; }, duration);
   };
 
   const mapMenuToCaseType = (key: MenuKey): CaseType | undefined => {
@@ -323,7 +326,7 @@ export default function App() {
       if (success) {
         setCurrentCase(newCase);
         setActiveView('editor');
-        showToast('新案例已创建并同步至数据库');
+        showToast('案例创建成功，开始编辑吧');
       } else {
         showToast('创建失败，请检查数据库连接', 'error');
       }
@@ -345,17 +348,17 @@ export default function App() {
     if (!target) return;
     
     if (!user) {
-      showToast('请先登录后再删除案例', 'error');
+      showToast('请先登录后再删除案例', 'info');
       return;
     }
 
     if (target.ownerId !== user.uid) {
-      showToast('您没有权限删除此案例', 'error');
+      showToast('只能删除自己创建的案例', 'info');
       return;
     }
 
     if (target.isPublic === true) {
-      showToast('仅允许删除自己私密案例', 'error');
+      showToast('已公开的案例不支持删除，请先取消公开', 'info');
       return;
     }
 
@@ -369,9 +372,9 @@ export default function App() {
       return;
     }
     if (result.duplicated) {
-      showToast('你已经点过赞了', 'error');
+      showToast('你已经为这个案例点过赞了', 'info');
     } else {
-      showToast('点赞成功');
+      showToast('点赞 +1，感谢支持！');
     }
     await refreshCasesOnce(user?.uid);
   };
@@ -394,7 +397,7 @@ export default function App() {
         const success = await apiService.deleteCase(confirmDelete, user);
         if (success) {
           setConfirmDelete(null);
-          showToast('删除成功');
+          showToast('案例已删除');
         } else {
           showToast('删除失败', 'error');
         }
@@ -415,7 +418,7 @@ export default function App() {
 
     if (!user) {
       setShowLoginModal(true);
-      showToast('请先登录以保存案例', 'error');
+      showToast('请先登录后再保存案例', 'info');
       return;
     }
 
@@ -430,7 +433,7 @@ export default function App() {
       const success = await apiService.saveCase(updatedCase, user);
       if (success) {
         await refreshCasesOnce(user.uid);
-        showToast('保存成功');
+        showToast('案例已保存');
         setActiveView('dashboard');
       } else {
         showToast('保存失败，请检查网络或数据库连接', 'error');
@@ -453,7 +456,7 @@ export default function App() {
 
     if (!user) {
       setShowLoginModal(true);
-      showToast('请先登录以发布案例', 'error');
+      showToast('请先登录后再发布案例', 'info');
       return;
     }
 
@@ -499,7 +502,7 @@ export default function App() {
       setUser(result.user);
       localStorage.setItem('internal_user', JSON.stringify(result.user));
       setShowLoginModal(false);
-      showToast('登录成功');
+      showToast(`欢迎回来，${result.user?.displayName || u}`);
 
       // Reload cases with new user context after a short delay
       setTimeout(() => {
@@ -514,7 +517,7 @@ export default function App() {
     setUser(null);
     localStorage.removeItem('internal_user');
     setMenuKey('overview');
-    showToast('已退出登录');
+    showToast('已安全退出', 'info');
 
     // 立即刷新案例列表（仅公开案例）
     try {
@@ -528,7 +531,7 @@ export default function App() {
   const handleSaveDbConfig = async (config: DbConfig) => {
     const result = await apiService.saveDbConfig(config);
     if (result.success) {
-      showToast('数据库配置已保存并连接成功');
+      showToast('数据库连接成功，配置已保存');
       setDbConfig(config);
       return true;
     } else {
@@ -540,7 +543,7 @@ export default function App() {
   const handleResetDbConfig = async () => {
     const success = await apiService.resetDbConfig();
     if (success) {
-      showToast('数据库连接已断开');
+      showToast('数据库连接已断开', 'info');
       setShowDbConfig(false);
     } else {
       showToast('重置失败', 'error');
@@ -548,17 +551,17 @@ export default function App() {
   };
 
   const handleTestDbConfig = async (config: DbConfig) => {
-    return await apiService.testDbConnection(config);
+    return apiService.testDbConnection(config);
   };
 
   const handleExportPptx = async (caseData: Case) => {
     try {
-      showToast('正在生成 PPTX...');
+      showToast('正在生成 PPTX，请稍候...', 'loading');
       await exportToPptx(caseData);
-      showToast('PPTX 导出成功');
+      showToast('PPTX 导出完成，已开始下载');
     } catch (error) {
       console.error('PPTX export error:', error);
-      showToast('导出失败，请重试', 'error');
+      showToast('PPTX 导出失败，请重试', 'error');
     }
   };
 
@@ -680,7 +683,7 @@ export default function App() {
                 onNewCase={handleCreate}
                 onEditCase={(c) => {
                   if (!user || c.ownerId !== user.uid) {
-                    showToast('无权修改他人案例', 'error');
+                    showToast('只能编辑自己创建的案例', 'info');
                     return;
                   }
                   setCurrentCase(c);
@@ -717,20 +720,22 @@ export default function App() {
       )}
 
       {activeView === 'canvas' && currentCase && (
-        <CanvasView 
+        <CanvasView
           caseData={currentCase}
           onBack={() => setActiveView('dashboard')}
           onEdit={() => setActiveView('editor')}
           showToast={showToast}
+          user={user}
         />
       )}
 
       <AnimatePresence>
         {toast && (
-          <Toast 
-            message={toast.message} 
-            type={toast.type} 
-            onClose={() => setToast(null)} 
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            duration={toast.duration}
+            onClose={() => setToast(null)}
           />
         )}
         

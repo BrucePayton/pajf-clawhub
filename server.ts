@@ -25,6 +25,18 @@ type DbConfig = {
   database: string;
 };
 
+function formatDbConnectionHint(err: unknown, host: string): string {
+  const msg = err instanceof Error ? err.message : String(err || 'Unknown error');
+  const h = String(host || '').trim().toLowerCase();
+  if (/ENOTFOUND|getaddrinfo/i.test(msg) && (h === 'mysql-server' || h.includes('mysql-server'))) {
+    return `${msg}。提示：「mysql-server」是 Compose 服务名，仅在「API 与 MySQL 在同一 Docker 网络」的容器内可解析。若 API 在本机直接运行（如 tsx server.ts），请把主机改为 127.0.0.1 或 localhost，并保证 MySQL 端口已映射到本机。`;
+  }
+  if (/ENOTFOUND|getaddrinfo/i.test(msg)) {
+    return `${msg}。请确认主机名/IP 正确，且运行 API 的机器能访问该地址。`;
+  }
+  return msg;
+}
+
 type CaseType = 'openclaw_app' | 'tool_app' | 'agent_app' | 'rpa_app' | 'dashboard_app';
 type AuthUser = {
   id: string;
@@ -356,7 +368,10 @@ async function startServer() {
       await createPool(req.body as DbConfig);
       res.json({ success: true });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: err?.message || '数据库连接失败' });
+      res.status(500).json({
+        success: false,
+        message: formatDbConnectionHint(err, (req.body as DbConfig)?.host || ''),
+      });
     }
   });
 
@@ -378,7 +393,10 @@ async function startServer() {
       await testPool.end();
       res.json({ success: true });
     } catch (error: any) {
-      res.status(400).json({ success: false, message: error?.message || 'Unknown error' });
+      res.status(400).json({
+        success: false,
+        message: formatDbConnectionHint(error, config.host || ''),
+      });
     }
   });
 
@@ -471,7 +489,7 @@ async function startServer() {
         query = `SELECT case_data FROM cases WHERE (${query.replace('SELECT case_data FROM cases WHERE ', '')}) AND case_type = ?`;
         params.push(case_type);
       }
-      query += ' ORDER BY updated_at DESC';
+      query += ' ORDER BY updated_at DESC LIMIT 500';
       const [rows]: any = await requirePool().query(query, params);
       res.json(rows.map((row: any) => ensureCaseLikeFields(row.case_data)));
     } catch (err: any) {
@@ -492,8 +510,7 @@ async function startServer() {
           [c.id, JSON.stringify(c), c.caseType || 'openclaw_app', 'admin-1', true]
         );
       }
-      const [rows]: any = await requirePool().query('SELECT case_data FROM cases ORDER BY updated_at DESC');
-      io.emit('cases_updated', rows.map((row: any) => ensureCaseLikeFields(row.case_data)));
+      io.emit('cases_updated', { event: 'refresh' });
       res.json({ success: true, inserted: bootstrapCases.length });
     } catch (err: any) {
       console.error('Error bootstrapping cases:', err);
@@ -518,8 +535,7 @@ async function startServer() {
         nextCase.isPublic === true,
         id,
       ]);
-      const [rows]: any = await requirePool().query('SELECT case_data FROM cases ORDER BY updated_at DESC');
-      io.emit('cases_updated', rows.map((row: any) => ensureCaseLikeFields(row.case_data)));
+      io.emit('cases_updated', { event: 'refresh' });
       res.json({ success: true, duplicated: false, likeCount: nextCase.likeCount });
     } catch (err: any) {
       console.error('Error liking case:', err);
@@ -564,8 +580,7 @@ async function startServer() {
           isPublic,
         ]
       );
-      const [rows]: any = await requirePool().query('SELECT case_data FROM cases ORDER BY updated_at DESC');
-      io.emit('cases_updated', rows.map((row: any) => ensureCaseLikeFields(row.case_data)));
+      io.emit('cases_updated', { event: 'refresh' });
       res.json({ success: true });
     } catch (err: any) {
       console.error('Error saving case:', err);
@@ -584,12 +599,74 @@ async function startServer() {
       if (!targetOwnerId || targetOwnerId !== userId) return res.status(403).json({ success: false, message: '无权删除他人案例' });
       if (targetCaseData?.isPublic === true) return res.status(403).json({ success: false, message: '仅允许删除自己私密案例' });
       await requirePool().query('DELETE FROM cases WHERE id = ?', [id]);
-      const [rows]: any = await requirePool().query('SELECT case_data FROM cases ORDER BY updated_at DESC');
-      io.emit('cases_updated', rows.map((row: any) => ensureCaseLikeFields(row.case_data)));
+      io.emit('cases_updated', { event: 'refresh' });
       res.json({ success: true });
     } catch (err: any) {
       console.error('Error deleting case:', err);
       res.status(500).json({ error: err?.message || '删除数据失败' });
+    }
+  });
+
+  // ── Case Comments ──
+
+  app.get('/api/cases/:id/comments', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const [rows]: any = await requirePool().query(
+        'SELECT id, case_id, user_id, username, content, created_at FROM case_comments WHERE case_id = ? ORDER BY created_at ASC LIMIT 200',
+        [id]
+      );
+      res.json(rows);
+    } catch (err: any) {
+      console.error('Error fetching comments:', err);
+      res.status(500).json({ error: err?.message || '读取留言失败' });
+    }
+  });
+
+  app.post('/api/cases/:id/comments', requireAuth, async (req, res) => {
+    try {
+      const { id: caseId } = req.params;
+      const authUser = getAuthUser(req)!;
+      const { content } = req.body;
+      if (!content || typeof content !== 'string' || content.trim().length === 0) {
+        return res.status(400).json({ success: false, message: '留言内容不能为空' });
+      }
+      if (content.length > 500) {
+        return res.status(400).json({ success: false, message: '留言内容不能超过 500 字' });
+      }
+      const [caseRows]: any = await requirePool().query('SELECT id FROM cases WHERE id = ? LIMIT 1', [caseId]);
+      if (!caseRows.length) return res.status(404).json({ success: false, message: '案例不存在' });
+
+      const commentId = `cmt-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+      await requirePool().query(
+        'INSERT INTO case_comments (id, case_id, user_id, username, content) VALUES (?, ?, ?, ?, ?)',
+        [commentId, caseId, authUser.id, authUser.username, content.trim()]
+      );
+      const [newRow]: any = await requirePool().query(
+        'SELECT id, case_id, user_id, username, content, created_at FROM case_comments WHERE id = ?',
+        [commentId]
+      );
+      res.json({ success: true, comment: newRow[0] });
+    } catch (err: any) {
+      console.error('Error posting comment:', err);
+      res.status(500).json({ success: false, message: err?.message || '留言失败' });
+    }
+  });
+
+  app.delete('/api/comments/:id', requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const authUser = getAuthUser(req)!;
+      const [rows]: any = await requirePool().query('SELECT user_id FROM case_comments WHERE id = ? LIMIT 1', [id]);
+      if (!rows.length) return res.status(404).json({ success: false, message: '留言不存在' });
+      if (rows[0].user_id !== authUser.id && authUser.role !== 'admin') {
+        return res.status(403).json({ success: false, message: '只能删除自己的留言' });
+      }
+      await requirePool().query('DELETE FROM case_comments WHERE id = ?', [id]);
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error('Error deleting comment:', err);
+      res.status(500).json({ success: false, message: err?.message || '删除留言失败' });
     }
   });
 

@@ -72,7 +72,7 @@ OpenClawCaseCollection（基于 React + Vite 的案件管理与展示系统）
 当前 Compose 链路为：
 - `web`：Nginx 静态托管 + 反向代理
 - `api`：Node/Express 服务，监听 `3010`
-- `mysql-server`：MySQL 8.4，初始化数据库 `OpenclawAppPlatform`
+- `mysql-server`：MySQL（默认 latest），初始化数据库 `OpenclawAppPlatform`
 
 ## 数据库迁移手册
 
@@ -102,6 +102,7 @@ OpenClawCaseCollection（基于 React + Vite 的案件管理与展示系统）
 - API 日志：`docker logs openclaw-api --tail 150`
 - Nginx 日志：`docker logs openclaw-nginx --tail 150`
 - MySQL 日志：`docker logs mysql-server --tail 150`
+- 若出现 MySQL InnoDB 异常，优先使用 Compose 命名卷并执行 `docker compose down -v` 后重建。切勿在旧数据目录上跨大版本升级 MySQL 镜像。
 
 ## 验证与调试
 - `npm run lint`：TypeScript 类型检查

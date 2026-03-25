@@ -9,7 +9,7 @@ interface DbConfigModalProps {
   config: DbConfig;
   onSave: (config: DbConfig) => Promise<boolean>;
   onReset: () => Promise<void>;
-  onTest: (config: DbConfig) => Promise<boolean>;
+  onTest: (config: DbConfig) => Promise<{ success: boolean; message?: string }>;
 }
 
 export const DbConfigModal: React.FC<DbConfigModalProps> = ({ 
@@ -31,10 +31,10 @@ export const DbConfigModal: React.FC<DbConfigModalProps> = ({
   const handleTest = async () => {
     setIsTesting(true);
     setTestResult(null);
-    const success = await onTest(config);
+    const result = await onTest(config);
     setTestResult({
-      success,
-      message: success ? '连接成功！' : '连接失败，请检查配置。'
+      success: result.success,
+      message: result.success ? '连接成功！' : result.message || '连接失败，请检查配置。',
     });
     setIsTesting(false);
   };
@@ -115,9 +115,14 @@ CREATE TABLE IF NOT EXISTS cases (
                   placeholder="localhost"
                 />
               </div>
-              { (config.host === 'localhost' || config.host === '127.0.0.1') && (
-                <p className="text-[10px] text-amber-600 font-bold px-1 uppercase tracking-wider">
-                  Note: Localhost points to the server container.
+              {config.host.trim().toLowerCase() === 'mysql-server' && (
+                <p className="text-[10px] text-amber-600 font-bold px-1 leading-relaxed">
+                  仅在 Docker Compose 中运行的 API 可使用此主机名；本机直接运行 API 时请改为 127.0.0.1。
+                </p>
+              )}
+              {(config.host === 'localhost' || config.host === '127.0.0.1') && (
+                <p className="text-[10px] text-neutral-500 font-bold px-1 leading-relaxed">
+                  表示从运行 API 的进程所在机器访问本机 MySQL（本机开发时常用）。
                 </p>
               )}
             </div>
@@ -210,8 +215,16 @@ CREATE TABLE IF NOT EXISTS cases (
               animate={{ opacity: 1, y: 0 }}
               className={`p-4 rounded-2xl flex items-center gap-3 border ${testResult.success ? 'bg-brand-50 text-brand-600 border-brand-100' : 'bg-red-50 text-red-600 border-red-100'}`}
             >
-              {testResult.success ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
-              <span className="text-xs font-bold uppercase tracking-wider">{testResult.message}</span>
+              {testResult.success ? <CheckCircle className="w-5 h-5 shrink-0" /> : <AlertCircle className="w-5 h-5 shrink-0" />}
+              <span
+                className={
+                  testResult.success
+                    ? 'text-xs font-bold uppercase tracking-wider'
+                    : 'text-xs font-medium leading-snug normal-case'
+                }
+              >
+                {testResult.message}
+              </span>
             </motion.div>
           )}
 
@@ -251,7 +264,7 @@ CREATE TABLE IF NOT EXISTS cases (
               </motion.div>
             )}
             <p className="text-[10px] text-neutral-400 mt-4 font-bold uppercase tracking-wider text-center">
-              服务端启动时也会自动校验并补齐以上表结构。
+              表结构由迁移脚本管理；部署后请先执行 npm run migrate。
             </p>
           </div>
         </div>

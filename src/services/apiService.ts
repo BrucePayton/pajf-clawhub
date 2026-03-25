@@ -26,6 +26,15 @@ export interface LoginResult {
   message?: string;
 }
 
+export interface CaseComment {
+  id: string;
+  case_id: string;
+  user_id: string;
+  username: string;
+  content: string;
+  created_at: string;
+}
+
 const getStoredUser = (): User | null => {
   const savedUser = localStorage.getItem('internal_user');
   if (!savedUser) return null;
@@ -168,8 +177,8 @@ export const apiService = {
     return response.ok;
   },
 
-  // Real-time
-  onCasesUpdated: (callback: (cases: any[]) => void) => {
+  // Real-time — server emits { event: 'refresh' }; callback re-fetches via GET /api/cases
+  onCasesUpdated: (callback: () => void) => {
     socket.on('cases_updated', callback);
     return () => socket.off('cases_updated', callback);
   },
@@ -202,13 +211,42 @@ export const apiService = {
     return response.ok;
   },
 
-  testDbConnection: async (config: any): Promise<boolean> => {
+  testDbConnection: async (config: any): Promise<{ success: boolean; message?: string }> => {
     const response = await fetch(`${API_URL}/api/db-config/test`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify(config)
     });
     const data = await response.json();
-    return data.success;
-  }
+    return { success: !!data.success, message: typeof data.message === 'string' ? data.message : undefined };
+  },
+
+  getComments: async (caseId: string): Promise<CaseComment[]> => {
+    try {
+      const response = await fetch(`${API_URL}/api/cases/${caseId}/comments`);
+      if (!response.ok) return [];
+      return await response.json();
+    } catch { return []; }
+  },
+
+  postComment: async (caseId: string, content: string): Promise<{ success: boolean; comment?: CaseComment; message?: string }> => {
+    try {
+      const response = await fetch(`${API_URL}/api/cases/${caseId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ content }),
+      });
+      return await response.json();
+    } catch { return { success: false, message: '网络异常' }; }
+  },
+
+  deleteComment: async (commentId: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`${API_URL}/api/comments/${commentId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      return response.ok;
+    } catch { return false; }
+  },
 };

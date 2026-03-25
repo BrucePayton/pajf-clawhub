@@ -1,50 +1,100 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Download, Globe, Target, Zap, TrendingUp, Calendar, Clock, CheckCircle, ChevronRight, Layout, FileText, X, ZoomIn } from 'lucide-react';
+import { ArrowLeft, Download, Globe, Target, Zap, TrendingUp, Calendar, Clock, CheckCircle, ChevronRight, Layout, FileText, X, ZoomIn, MessageSquare, Send, Trash2 } from 'lucide-react';
 import { Case } from '../types';
 import { exportToPptx } from '../services/pptxService';
 import { exportElementToPdf } from '../services/pdfService';
 import { buildExportFileBaseName, getCaseTypeLabel } from '../services/exportMeta';
+import { apiService, CaseComment, User } from '../services/apiService';
 
 interface CanvasViewProps {
   caseData: Case;
   onBack: () => void;
   onEdit: () => void;
-  showToast: (msg: string, type?: 'success' | 'error') => void;
+  showToast: (msg: string, type?: 'success' | 'error' | 'info' | 'loading') => void;
+  user?: User | null;
 }
 
 export const CanvasView: React.FC<CanvasViewProps> = ({
   caseData,
   onBack,
   onEdit,
-  showToast
+  showToast,
+  user,
 }) => {
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const exportAreaRef = useRef<HTMLDivElement | null>(null);
+  const [comments, setComments] = useState<CaseComment[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const commentsEndRef = useRef<HTMLDivElement | null>(null);
+
+  const loadComments = useCallback(async () => {
+    const data = await apiService.getComments(caseData.id);
+    setComments(data);
+  }, [caseData.id]);
+
+  useEffect(() => { loadComments(); }, [loadComments]);
+
+  const handlePostComment = async () => {
+    if (!newComment.trim()) return;
+    if (!user) { showToast('请先登录后再留言', 'info'); return; }
+    setSubmitting(true);
+    const result = await apiService.postComment(caseData.id, newComment.trim());
+    setSubmitting(false);
+    if (result.success && result.comment) {
+      setComments(prev => [...prev, result.comment!]);
+      setNewComment('');
+      setTimeout(() => commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    } else {
+      showToast(result.message || '留言失败', 'error');
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    const ok = await apiService.deleteComment(commentId);
+    if (ok) {
+      setComments(prev => prev.filter(c => c.id !== commentId));
+    } else {
+      showToast('删除留言失败', 'error');
+    }
+  };
+
+  const formatTime = (ts: string) => {
+    const d = new Date(ts);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return '刚刚';
+    if (diffMin < 60) return `${diffMin} 分钟前`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr} 小时前`;
+    return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
 
   const handleExport = async () => {
     try {
-      showToast('正在生成 PPTX...');
+      showToast('正在生成 PPTX，请稍候...', 'loading');
       await exportToPptx(caseData);
-      showToast('PPTX 导出成功');
+      showToast('PPTX 导出完成，已开始下载');
     } catch (error) {
       console.error('PPTX export error:', error);
-      showToast('导出失败，请重试', 'error');
+      showToast('PPTX 导出失败，请重试', 'error');
     }
   };
 
   const handleExportPdf = async () => {
     if (!exportAreaRef.current) {
-      showToast('导出失败，请稍后重试', 'error');
+      showToast('导出区域未就绪，请稍后重试', 'error');
       return;
     }
     try {
-      showToast('正在生成 PDF...');
+      showToast('正在生成 PDF，请稍候...', 'loading');
       await exportElementToPdf(exportAreaRef.current, buildExportFileBaseName(caseData));
-      showToast('PDF 导出成功');
+      showToast('PDF 导出完成，已开始下载');
     } catch (error) {
       console.error('PDF export error:', error);
-      showToast('PDF 导出失败，已切换浏览器打印模式', 'error');
+      showToast('PDF 导出失败，已切换浏览器打印模式', 'info');
       window.print();
     }
   };
@@ -244,6 +294,75 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
           </motion.section>
         </div>
       </main>
+
+      {/* Comments Section -- not included in PPTX/PDF exports */}
+      <section className="mt-8 mb-12 max-w-3xl mx-auto print:hidden">
+        <div className="card-modern p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-8 h-8 bg-neutral-100 rounded-lg flex items-center justify-center">
+              <MessageSquare className="w-4 h-4 text-neutral-500" />
+            </div>
+            <h2 className="text-lg font-bold tracking-tight">留言讨论</h2>
+            <span className="text-xs text-neutral-400 font-bold">{comments.length} 条</span>
+          </div>
+
+          {comments.length > 0 && (
+            <div className="space-y-4 mb-6 max-h-[420px] overflow-y-auto pr-2 -mr-2 custom-scrollbar">
+              {comments.map((c) => (
+                <div key={c.id} className="flex gap-3 group/comment">
+                  <div className="w-8 h-8 rounded-full bg-brand-50 flex items-center justify-center text-brand-600 text-xs font-black shrink-0 mt-0.5">
+                    {c.username.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-neutral-800">{c.username}</span>
+                      <span className="text-[10px] text-neutral-400">{formatTime(c.created_at)}</span>
+                      {user && (user.uid === c.user_id || user.role === 'admin') && (
+                        <button
+                          onClick={() => handleDeleteComment(c.id)}
+                          className="opacity-0 group-hover/comment:opacity-100 transition-opacity p-1 text-neutral-300 hover:text-red-500 rounded"
+                          title="删除留言"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-sm text-neutral-600 leading-relaxed mt-1 break-words">{c.content}</p>
+                  </div>
+                </div>
+              ))}
+              <div ref={commentsEndRef} />
+            </div>
+          )}
+
+          {comments.length === 0 && (
+            <p className="text-sm text-neutral-400 text-center py-6 mb-4">暂无留言，来说点什么吧</p>
+          )}
+
+          <div className="flex gap-3 items-end">
+            <textarea
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value.slice(0, 500))}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePostComment(); } }}
+              placeholder={user ? '写下你的想法...' : '登录后可以留言'}
+              disabled={!user}
+              rows={2}
+              className="flex-1 px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm text-neutral-700 placeholder-neutral-400 resize-none focus:outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            />
+            <button
+              onClick={handlePostComment}
+              disabled={!user || !newComment.trim() || submitting}
+              className="px-4 py-3 bg-brand-500 text-white rounded-xl font-bold text-sm hover:bg-brand-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 shrink-0 shadow-lg shadow-brand-500/20"
+            >
+              <Send className="w-4 h-4" />
+              <span>{submitting ? '发送中...' : '发送'}</span>
+            </button>
+          </div>
+          {newComment.length > 400 && (
+            <p className="text-[10px] text-neutral-400 mt-1 text-right">{newComment.length}/500</p>
+          )}
+        </div>
+      </section>
 
       {/* Image Zoom Modal */}
       <AnimatePresence>

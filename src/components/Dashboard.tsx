@@ -199,6 +199,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const handleExportExcel = React.useCallback(() => {
     const rows = filteredCases.map((c) => ({
       标题: c.title,
+      案例类型: caseTypeLabelMap[c.caseType || 'openclaw_app'],
       组织: c.organization,
       创建人: c.author?.trim() || '未命名用户',
       状态: c.status === 'published' ? '已发布' : '草稿',
@@ -645,6 +646,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <thead>
                 <tr className="bg-neutral-50/50">
                   <th className="px-8 py-4 text-left text-[10px] font-black text-neutral-400 uppercase tracking-[0.15em]">案例名称</th>
+                  <th className="px-8 py-4 text-left text-[10px] font-black text-neutral-400 uppercase tracking-[0.15em]">案例类型</th>
                   <th className="px-8 py-4 text-left text-[10px] font-black text-neutral-400 uppercase tracking-[0.15em]">组织</th>
                   <th className="px-8 py-4 text-left text-[10px] font-black text-neutral-400 uppercase tracking-[0.15em]">创建人</th>
                   <th className="px-8 py-4 text-left text-[10px] font-black text-neutral-400 uppercase tracking-[0.15em]">状态</th>
@@ -667,23 +669,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         </div>
                         <div>
                           <p className="font-bold text-neutral-900 text-sm group-hover:text-brand-600 transition-colors">{c.title}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest">VERSION {(c.version ?? 0).toFixed(1)}</p>
-                            {c.caseType && (
-                              <span className="px-2 py-0.5 rounded-md bg-brand-50 text-brand-600 text-[9px] font-bold">
-                                {caseTypeLabelMap[c.caseType]}
-                              </span>
-                            )}
-                          </div>
+                          <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest mt-0.5">
+                            VERSION {(c.version ?? 0).toFixed(1)}
+                          </p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-8 py-6">
+                    <td className="px-8 py-6 whitespace-nowrap">
+                      <span className="inline-flex px-3 py-1.5 rounded-xl bg-orange-50 text-orange-800 border border-orange-100 text-[10px] font-bold tracking-wide">
+                        {caseTypeLabelMap[c.caseType || 'openclaw_app']}
+                      </span>
+                    </td>
+                    <td className="px-8 py-6 whitespace-nowrap">
                       <span className="px-3 py-1 bg-neutral-100 text-neutral-600 rounded-lg text-[10px] font-bold uppercase tracking-wider">
                         {c.organization}
                       </span>
                     </td>
-                    <td className="px-8 py-6 text-xs text-neutral-600 font-bold">
+                    <td className="px-8 py-6 whitespace-nowrap text-xs text-neutral-600 font-bold">
                       {c.author?.trim() || '未命名用户'}
                     </td>
                     <td className="px-8 py-6">
@@ -701,7 +703,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         )}
                       </div>
                     </td>
-                    <td className="px-8 py-6 text-xs text-neutral-500 font-bold">
+                    <td className="px-8 py-6 whitespace-nowrap text-xs text-neutral-500 font-bold">
                       {new Date(c.lastModified ?? Date.now()).toLocaleDateString()}
                     </td>
                     <td className="px-8 py-6">

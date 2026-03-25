@@ -73,7 +73,7 @@ interface EditorProps {
   onBack: () => void;
   onSave: () => void;
   onPublish: () => void;
-  showToast: (message: string, type?: 'success' | 'error') => void;
+  showToast: (message: string, type?: 'success' | 'error' | 'info' | 'loading') => void;
 }
 
 export const Editor: React.FC<EditorProps> = ({
@@ -133,7 +133,7 @@ export const Editor: React.FC<EditorProps> = ({
 
     // Check file size (limit to 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      showToast('图片太大（超过 10MB），请上传较小的图片。', 'error');
+      showToast('图片超过 10MB，请压缩后再上传', 'info');
       return;
     }
 
