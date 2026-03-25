@@ -65,7 +65,7 @@ npm run build
 
 # ── 构建 API 镜像（先于迁移，确保迁移使用最新代码） ──
 log "构建 API Docker 镜像"
-docker compose build api
+docker compose build --no-cache api
 
 log "停止旧容器并清理孤儿容器"
 docker compose down --remove-orphans
