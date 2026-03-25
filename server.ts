@@ -244,10 +244,22 @@ async function initDb() {
       FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
-  await pool.query(`
-    ALTER TABLE cases
-    ADD COLUMN IF NOT EXISTS case_type VARCHAR(64) NOT NULL DEFAULT 'openclaw_app'
-  `);
+  const [caseTypeColumnRows]: any = await pool.query(
+    `
+      SELECT COUNT(*) AS total
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'cases'
+        AND COLUMN_NAME = 'case_type'
+    `
+  );
+  const hasCaseTypeColumn = Number(caseTypeColumnRows?.[0]?.total ?? 0) > 0;
+  if (!hasCaseTypeColumn) {
+    await pool.query(`
+      ALTER TABLE cases
+      ADD COLUMN case_type VARCHAR(64) NOT NULL DEFAULT 'openclaw_app'
+    `);
+  }
   const defaultAdminPassword = hashPassword('admin');
   await pool.query(
     `
