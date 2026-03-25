@@ -243,7 +243,16 @@ export default function App() {
     document.title = metadata.name;
     const savedUser = localStorage.getItem('internal_user');
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        if (parsedUser?.token) {
+          setUser(parsedUser);
+        } else {
+          localStorage.removeItem('internal_user');
+        }
+      } catch (_error) {
+        localStorage.removeItem('internal_user');
+      }
     }
     setIsAuthReady(true);
   }, []);
@@ -284,6 +293,9 @@ export default function App() {
   useEffect(() => {
     if (!isAuthReady) return;
     ensureBootstrapAndLoad(user?.uid, mapMenuToCaseType(menuKey));
+    if (menuKey === 'user_management' && user?.role !== 'admin') {
+      setMenuKey('overview');
+    }
   }, [menuKey, isAuthReady, user, ensureBootstrapAndLoad]);
 
   // Load DB Config
@@ -501,6 +513,7 @@ export default function App() {
   const handleLogout = async () => {
     setUser(null);
     localStorage.removeItem('internal_user');
+    setMenuKey('overview');
     showToast('已退出登录');
 
     // 立即刷新案例列表（仅公开案例）
@@ -604,6 +617,7 @@ export default function App() {
     { key: 'dashboard_app', label: '看板案例', icon: <PanelLeft className="w-4 h-4" /> },
     { key: 'user_management', label: '用户管理', icon: <Users className="w-4 h-4" /> },
   ];
+  const visibleMenuItems = menuItems.filter((item) => item.key !== 'user_management' || user?.role === 'admin');
 
   const currentModuleMeta = moduleMeta[menuKey];
 
@@ -616,7 +630,7 @@ export default function App() {
               <h2 className="text-sm font-black text-neutral-800">{metadata.name}</h2>
             </div>
             <nav className="space-y-1">
-              {menuItems.map((item) => (
+              {visibleMenuItems.map((item) => (
                 <button
                   key={item.key}
                   onClick={() => setMenuKey(item.key)}
@@ -641,7 +655,13 @@ export default function App() {
                     <h1 className="text-3xl font-black text-neutral-900 tracking-tight">{currentModuleMeta.pageTitle}</h1>
                     <p className="text-neutral-500 text-sm mt-1">{currentModuleMeta.pageSubtitle}</p>
                   </div>
-                  <UserManagementPanel />
+                  {user?.role === 'admin' ? (
+                    <UserManagementPanel />
+                  ) : (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-700">
+                      仅管理员可访问用户管理模块。
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (

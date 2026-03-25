@@ -73,6 +73,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'));
   }, [cases]);
 
+  const organizationOptions = React.useMemo(() => {
+    const set = new Set<string>();
+    cases.forEach((c) => set.add(c.organization));
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'));
+  }, [cases]);
+
   const filteredCases = React.useMemo(() => {
     return cases.filter(c => {
       const query = searchQuery.toLowerCase();
@@ -158,6 +164,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return orderedTypes.map((type) => {
       const typeCases = cases.filter((c) => (c.caseType || 'openclaw_app') === type);
       const published = typeCases.filter((c) => c.status === 'published').length;
+      const publicCount = typeCases.filter((c) => c.isPublic === true).length;
       const likes = typeCases.reduce((sum, c) => sum + (c.likeCount ?? 0), 0);
       const percentage = cases.length > 0 ? Math.round((typeCases.length / cases.length) * 100) : 0;
       return {
@@ -165,11 +172,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
         label: caseTypeLabelMap[type],
         count: typeCases.length,
         published,
+        publicCount,
         likes,
         percentage,
+        likeDensity: typeCases.length > 0 ? Number((likes / typeCases.length).toFixed(1)) : 0,
       };
     });
   }, [cases]);
+
+  const caseTypeByOrganization = React.useMemo(() => {
+    return orgStats.map((org) => ({
+      organization: org.organization,
+      values: caseTypeStats.map((typeItem) => {
+        const count = cases.filter(
+          (c) => c.organization === org.organization && (c.caseType || 'openclaw_app') === typeItem.type
+        ).length;
+        return {
+          type: typeItem.type,
+          label: typeItem.label,
+          count,
+        };
+      }),
+    }));
+  }, [cases, orgStats, caseTypeStats]);
 
   const handleExportExcel = React.useCallback(() => {
     const rows = filteredCases.map((c) => ({
@@ -214,8 +239,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {/* 数据库配置按钮：只显示给初始 admin 用户 (admin-1) */}
-            {user?.uid === 'admin-1' && (
+            {user?.role === 'admin' && (
               <button
                 onClick={onOpenDbConfig}
                 className="p-3 bg-white text-neutral-400 rounded-xl hover:text-brand-500 hover:shadow-sm transition-all border border-neutral-200"
@@ -386,8 +410,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         />
                       </div>
                       <div className="flex items-center justify-between text-xs text-neutral-500">
-                        <span>已发布 {item.published}</span>
-                        <span>点赞 {item.likes}</span>
+                        <span>已发布 {item.published} / 公开 {item.publicCount}</span>
+                        <span>点赞密度 {item.likeDensity}</span>
                       </div>
                     </div>
                   </div>
@@ -421,7 +445,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm font-semibold text-neutral-800">{item.label}</span>
                           <span className="text-xs font-bold text-neutral-500">
-                            发布率 {item.count > 0 ? Math.round((item.published / item.count) * 100) : 0}%
+                            发布率 {item.count > 0 ? Math.round((item.published / item.count) * 100) : 0}% / 公开率 {item.count > 0 ? Math.round((item.publicCount / item.count) * 100) : 0}%
                           </span>
                         </div>
                         <div className="h-2 rounded-full bg-neutral-100 overflow-hidden">
@@ -438,41 +462,92 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </DashboardModule>
 
             <div className="mb-12" />
+
+            <DashboardModule
+              title="组织与类型分布"
+              subtitle="查看不同组织在五类案例上的分布情况，辅助判断推广方向"
+            >
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-neutral-50/70">
+                      <th className="px-4 py-3 text-left text-[10px] font-black text-neutral-400 uppercase tracking-wider">组织</th>
+                      {caseTypeStats.map((item) => (
+                        <th key={`head-${item.type}`} className="px-4 py-3 text-left text-[10px] font-black text-neutral-400 uppercase tracking-wider">
+                          {item.label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-100">
+                    {caseTypeByOrganization.map((row) => (
+                      <tr key={row.organization} className="hover:bg-neutral-50/60 transition-colors">
+                        <td className="px-4 py-3 text-sm font-bold text-neutral-800">{row.organization}</td>
+                        {row.values.map((cell) => (
+                          <td key={`${row.organization}-${cell.type}`} className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg font-black text-neutral-900">{cell.count}</span>
+                              <div className="h-2 flex-1 min-w-[72px] rounded-full bg-neutral-100 overflow-hidden">
+                                <div
+                                  className="h-full rounded-full bg-gradient-to-r from-orange-300 to-brand-500"
+                                  style={{ width: `${Math.max(
+                                    caseTypeStats.find((item) => item.type === cell.type)?.count
+                                      ? Math.round((cell.count / (caseTypeStats.find((item) => item.type === cell.type)?.count || 1)) * 100)
+                                      : 0,
+                                    cell.count > 0 ? 10 : 0
+                                  )}%` }}
+                                />
+                              </div>
+                            </div>
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </DashboardModule>
+
+            <div className="mb-12" />
           </>
         )}
 
         <DashboardModule
           title={showOverviewInsights ? "总体概览" : "模块概览"}
-          subtitle={showOverviewInsights ? "平台视角的基础统计概览" : `当前模块为「${pageTitle}」，功能与交互保持一致`}
+          subtitle={showOverviewInsights ? "补充展示平台状态指标，避免与平台分析重复" : `当前模块为「${pageTitle}」，功能与交互保持一致`}
         >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="card-modern p-8 group hover:border-brand-200 transition-all">
               <div className="flex items-center justify-between mb-4">
-                <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">总案例数</p>
+                <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">{showOverviewInsights ? '已发布率' : '总案例数'}</p>
                 <div className="w-10 h-10 bg-neutral-50 rounded-xl flex items-center justify-center group-hover:bg-neutral-100 transition-colors">
                   <FileText className="w-5 h-5 text-neutral-400" />
                 </div>
               </div>
               <p className="text-4xl font-black text-neutral-900">
-                {cases.length}
-                <span className="text-sm font-bold text-neutral-300 ml-2">ITEMS</span>
+                {showOverviewInsights
+                  ? `${cases.length > 0 ? Math.round((cases.filter(c => c.status === 'published').length / cases.length) * 100) : 0}%`
+                  : cases.length}
+                <span className="text-sm font-bold text-neutral-300 ml-2">{showOverviewInsights ? 'RATE' : 'ITEMS'}</span>
               </p>
             </div>
             <div className="card-modern p-8 group hover:border-brand-200 transition-all">
               <div className="flex items-center justify-between mb-4">
-                <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">已发布</p>
+                <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">{showOverviewInsights ? '公开率' : '已发布'}</p>
                 <div className="w-10 h-10 bg-brand-50 rounded-xl flex items-center justify-center group-hover:bg-brand-100 transition-colors">
                   <CheckCircle className="w-5 h-5 text-brand-500" />
                 </div>
               </div>
               <p className="text-4xl font-black text-brand-500">
-                {cases.filter(c => c.status === 'published').length}
-                <span className="text-sm font-bold text-brand-200 ml-2">LIVE</span>
+                {showOverviewInsights
+                  ? `${cases.length > 0 ? Math.round((cases.filter(c => c.isPublic === true).length / cases.length) * 100) : 0}%`
+                  : cases.filter(c => c.status === 'published').length}
+                <span className="text-sm font-bold text-brand-200 ml-2">{showOverviewInsights ? 'PUBLIC' : 'LIVE'}</span>
               </p>
             </div>
             <div className="card-modern p-8 group hover:border-amber-200 transition-all">
               <div className="flex items-center justify-between mb-4">
-                <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">草稿</p>
+                <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">{showOverviewInsights ? '草稿案例' : '草稿'}</p>
                 <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center group-hover:bg-amber-100 transition-colors">
                   <Clock className="w-5 h-5 text-amber-500" />
                 </div>
@@ -492,7 +567,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
           subtitle="支持搜索、筛选、点赞、导出与常用操作"
           actions={
             <>
-              <button className="p-2.5 bg-white border border-neutral-200 rounded-xl text-neutral-500 hover:text-brand-500 hover:border-brand-200 transition-all shadow-sm">
+              <button
+                onClick={() => {
+                  setStatusFilter('all');
+                  setOrganizationFilter('all');
+                  setCreatorFilter('all');
+                  setVisibilityFilter('all');
+                  setSearchQuery('');
+                }}
+                className="p-2.5 bg-white border border-neutral-200 rounded-xl text-neutral-500 hover:text-brand-500 hover:border-brand-200 transition-all shadow-sm"
+                title="重置筛选"
+              >
                 <Filter className="w-4 h-4" />
               </button>
               <select
@@ -510,12 +595,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 className="px-3 py-2 bg-white border border-neutral-200 rounded-xl text-xs font-semibold text-neutral-600"
               >
                 <option value="all">组织：全部</option>
-                <option value="财服总部">财服总部</option>
-                <option value="深圳分公司">深圳分公司</option>
-                <option value="上海分公司">上海分公司</option>
-                <option value="合肥分公司">合肥分公司</option>
-                <option value="成都分公司">成都分公司</option>
-                <option value="内江分公司">内江分公司</option>
+                {organizationOptions.map((organization) => (
+                  <option key={organization} value={organization}>{organization}</option>
+                ))}
               </select>
               <select
                 value={creatorFilter}

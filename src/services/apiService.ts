@@ -9,6 +9,7 @@ export interface User {
   displayName: string;
   email: string;
   role: string;
+  token?: string;
   photoURL?: string;
 }
 
@@ -25,6 +26,23 @@ export interface LoginResult {
   message?: string;
 }
 
+const getStoredUser = (): User | null => {
+  const savedUser = localStorage.getItem('internal_user');
+  if (!savedUser) return null;
+  try {
+    return JSON.parse(savedUser);
+  } catch (_error) {
+    localStorage.removeItem('internal_user');
+    return null;
+  }
+};
+
+const getAuthHeaders = (user?: User | null): Record<string, string> => {
+  const currentUser = user || getStoredUser();
+  if (!currentUser?.token) return {};
+  return { Authorization: `Bearer ${currentUser.token}` };
+};
+
 export const apiService = {
   // Auth
   login: async (username: string, password: string): Promise<LoginResult> => {
@@ -35,7 +53,7 @@ export const apiService = {
     });
     const data = await response.json().catch(() => ({}));
     if (response.ok) {
-      return { success: true, user: data.user };
+      return { success: true, user: { ...data.user, token: data.token } };
     }
     return { success: false, user: null, message: data?.message || '登录失败' };
   },
@@ -44,23 +62,27 @@ export const apiService = {
   registerUser: async (username: string, password: string, email?: string, role?: string): Promise<{ success: boolean; user?: any; message?: string }> => {
     const response = await fetch(`${API_URL}/api/users/register`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ username, password, email, role })
     });
     return await response.json();
   },
 
   getUsers: async (): Promise<any[]> => {
-    const response = await fetch(`${API_URL}/api/users`);
+    const response = await fetch(`${API_URL}/api/users`, {
+      headers: getAuthHeaders(),
+    });
     if (response.ok) {
       return await response.json();
     }
-    return [];
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data?.message || '获取用户列表失败');
   },
 
   deleteUser: async (id: string): Promise<{ success: boolean; message?: string }> => {
     const response = await fetch(`${API_URL}/api/users/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: getAuthHeaders(),
     });
     return await response.json();
   },
@@ -70,11 +92,12 @@ export const apiService = {
   getCases: async (owner_id?: string, case_type?: string): Promise<any[]> => {
     let url = `${API_URL}/api/cases`;
     const params = new URLSearchParams();
-    if (owner_id) params.set('owner_id', owner_id);
     if (case_type) params.set('case_type', case_type);
     if (params.toString()) url += `?${params.toString()}`;
 
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: getAuthHeaders(),
+    });
     if (response.ok) {
       return await response.json();
     }
@@ -92,15 +115,9 @@ export const apiService = {
   },
 
   likeCase: async (id: string, user?: User | null): Promise<LikeCaseResult> => {
-    const savedUser = localStorage.getItem('internal_user');
-    const currentUser = user || (savedUser ? JSON.parse(savedUser) : null);
-    const headers: Record<string, string> = {};
-    if (currentUser) {
-      headers['X-User-ID'] = currentUser.uid;
-    }
     const response = await fetch(`${API_URL}/api/cases/${id}/like`, {
       method: 'POST',
-      headers,
+      headers: getAuthHeaders(user),
     });
     const data = await response.json();
     if (!response.ok) {
@@ -115,14 +132,7 @@ export const apiService = {
   },
 
   saveCase: async (caseData: any, user?: User | null): Promise<boolean> => {
-    const savedUser = localStorage.getItem('internal_user');
-    const currentUser = user || (savedUser ? JSON.parse(savedUser) : null);
-
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (currentUser) {
-      headers['X-User-ID'] = currentUser.uid;
-      headers['X-User-Role'] = currentUser.role || 'user';
-    }
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', ...getAuthHeaders(user) };
 
     const payload = JSON.stringify(caseData);
     const payloadSizeBytes = new TextEncoder().encode(payload).length;
@@ -145,17 +155,9 @@ export const apiService = {
   },
 
   deleteCase: async (id: string, user?: User | null): Promise<boolean> => {
-    const savedUser = localStorage.getItem('internal_user');
-    const currentUser = user || (savedUser ? JSON.parse(savedUser) : null);
-
-    const headers: Record<string, string> = {};
-    if (currentUser) {
-      headers['X-User-ID'] = currentUser.uid;
-    }
-
     const response = await fetch(`${API_URL}/api/cases/${id}`, {
       method: 'DELETE',
-      headers
+      headers: getAuthHeaders(user),
     });
     if (response.status === 401) {
       throw new Error('CASE_UNAUTHORIZED');
@@ -174,7 +176,9 @@ export const apiService = {
 
   // DB Config
   getDbConfig: async (): Promise<any> => {
-    const response = await fetch(`${API_URL}/api/db-config`);
+    const response = await fetch(`${API_URL}/api/db-config`, {
+      headers: getAuthHeaders(),
+    });
     if (response.ok) {
       return await response.json();
     }
@@ -184,7 +188,7 @@ export const apiService = {
   saveDbConfig: async (config: any): Promise<{ success: boolean; message?: string }> => {
     const response = await fetch(`${API_URL}/api/db-config`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify(config)
     });
     return await response.json();
@@ -192,7 +196,8 @@ export const apiService = {
 
   resetDbConfig: async (): Promise<boolean> => {
     const response = await fetch(`${API_URL}/api/db-config/reset`, {
-      method: 'POST'
+      method: 'POST',
+      headers: getAuthHeaders(),
     });
     return response.ok;
   },
@@ -200,7 +205,7 @@ export const apiService = {
   testDbConnection: async (config: any): Promise<boolean> => {
     const response = await fetch(`${API_URL}/api/db-config/test`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify(config)
     });
     const data = await response.json();

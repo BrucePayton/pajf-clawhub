@@ -25,6 +25,13 @@ type DbConfig = {
 };
 
 type CaseType = 'openclaw_app' | 'tool_app' | 'agent_app' | 'rpa_app' | 'dashboard_app';
+type AuthUser = {
+  id: string;
+  username: string;
+  email: string;
+  role: string;
+};
+type AuthenticatedRequest = express.Request & { authUser?: AuthUser | null };
 
 const envDbConfig: DbConfig | null = process.env.DB_HOST
   ? {
@@ -38,6 +45,86 @@ const envDbConfig: DbConfig | null = process.env.DB_HOST
 
 let activeDbConfig: DbConfig | null = envDbConfig;
 let pool: mysql.Pool | null = null;
+const AUTH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const AUTH_SECRET = process.env.AUTH_SECRET || `${process.env.DB_PASSWORD || 'openclaw'}:${process.env.DB_NAME || 'platform'}`;
+const PASSWORD_PREFIX = 'scrypt';
+
+const toBase64Url = (value: Buffer | string) =>
+  Buffer.from(value)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
+
+const fromBase64Url = (value: string) => {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+  const padding = normalized.length % 4 === 0 ? '' : '='.repeat(4 - (normalized.length % 4));
+  return Buffer.from(`${normalized}${padding}`, 'base64');
+};
+
+const signTokenPayload = (encodedPayload: string) =>
+  toBase64Url(crypto.createHmac('sha256', AUTH_SECRET).update(encodedPayload).digest());
+
+const createAuthToken = (user: AuthUser) => {
+  const encodedPayload = toBase64Url(
+    JSON.stringify({
+      uid: user.id,
+      username: user.username,
+      email: user.email || '',
+      role: user.role,
+      exp: Date.now() + AUTH_TOKEN_TTL_MS,
+    })
+  );
+  return `${encodedPayload}.${signTokenPayload(encodedPayload)}`;
+};
+
+const parseAuthToken = (token: string): AuthUser | null => {
+  const [encodedPayload, signature] = token.split('.');
+  if (!encodedPayload || !signature) return null;
+  const expectedSignature = signTokenPayload(encodedPayload);
+  const expectedBuffer = Buffer.from(expectedSignature);
+  const actualBuffer = Buffer.from(signature);
+  if (expectedBuffer.length !== actualBuffer.length || !crypto.timingSafeEqual(expectedBuffer, actualBuffer)) return null;
+  try {
+    const payload = JSON.parse(fromBase64Url(encodedPayload).toString('utf8'));
+    if (!payload?.uid || !payload?.role || !payload?.exp || payload.exp < Date.now()) return null;
+    return {
+      id: payload.uid,
+      username: payload.username || '',
+      email: payload.email || '',
+      role: payload.role,
+    };
+  } catch (_error) {
+    return null;
+  }
+};
+
+const extractAuthToken = (req: express.Request) => {
+  const authorization = req.headers.authorization || '';
+  if (!authorization.startsWith('Bearer ')) return null;
+  return authorization.slice(7).trim() || null;
+};
+
+const getAuthUser = (req: express.Request) => (req as AuthenticatedRequest).authUser || null;
+
+const hashPassword = (password: string) => {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const derivedKey = crypto.scryptSync(password, salt, 64).toString('hex');
+  return `${PASSWORD_PREFIX}$${salt}$${derivedKey}`;
+};
+
+const verifyPassword = (storedPassword: string, rawPassword: string) => {
+  if (!storedPassword) return false;
+  if (!storedPassword.startsWith(`${PASSWORD_PREFIX}$`)) {
+    return storedPassword === rawPassword;
+  }
+  const [, salt, hashedValue] = storedPassword.split('$');
+  if (!salt || !hashedValue) return false;
+  const derivedKey = crypto.scryptSync(rawPassword, salt, 64).toString('hex');
+  const expectedBuffer = Buffer.from(hashedValue, 'hex');
+  const actualBuffer = Buffer.from(derivedKey, 'hex');
+  return expectedBuffer.length === actualBuffer.length && crypto.timingSafeEqual(expectedBuffer, actualBuffer);
+};
 
 const ensureCaseLikeFields = (caseData: any) => {
   const likeCount = Number.isFinite(caseData?.likeCount) ? Math.max(0, Number(caseData.likeCount)) : 0;
@@ -53,8 +140,8 @@ const ensureCaseLikeFields = (caseData: any) => {
 };
 
 const getVisitorKey = (req: express.Request) => {
-  const userId = (req.headers['x-user-id'] as string | undefined)?.trim();
-  if (userId) return `uid:${userId}`;
+  const authUser = getAuthUser(req);
+  if (authUser?.id) return `uid:${authUser.id}`;
   const userAgent = (req.headers['user-agent'] as string | undefined) || 'unknown-agent';
   const raw = `${req.ip}|${userAgent}`;
   const hash = crypto.createHash('sha256').update(raw).digest('hex').slice(0, 24);
@@ -161,14 +248,18 @@ async function initDb() {
     ALTER TABLE cases
     ADD COLUMN IF NOT EXISTS case_type VARCHAR(64) NOT NULL DEFAULT 'openclaw_app'
   `);
-  await pool.query(`
-    INSERT INTO users (id, username, password, role)
-    VALUES ('admin-1', 'admin', 'admin', 'admin')
-    ON DUPLICATE KEY UPDATE
-      username = VALUES(username),
-      password = VALUES(password),
-      role = VALUES(role)
-  `);
+  const defaultAdminPassword = hashPassword('admin');
+  await pool.query(
+    `
+      INSERT INTO users (id, username, password, role)
+      VALUES ('admin-1', 'admin', ?, 'admin')
+      ON DUPLICATE KEY UPDATE
+        username = VALUES(username),
+        password = VALUES(password),
+        role = VALUES(role)
+    `,
+    [defaultAdminPassword]
+  );
 }
 
 async function createPool(config: DbConfig) {
@@ -207,13 +298,53 @@ async function startServer() {
   app.use(cors());
   app.use(express.json({ limit: '200mb' }));
   app.use(express.urlencoded({ limit: '200mb', extended: true }));
+  app.use((req, _res, next) => {
+    const token = extractAuthToken(req);
+    (req as AuthenticatedRequest).authUser = token ? parseAuthToken(token) : null;
+    next();
+  });
 
-  app.get('/api/db-config', (_req, res) => {
+  const requireAuth: express.RequestHandler = (req, res, next) => {
+    const authUser = getAuthUser(req);
+    if (!authUser) {
+      res.status(401).json({ success: false, message: '未登录或登录已失效' });
+      return;
+    }
+    next();
+  };
+
+  const requireAdmin: express.RequestHandler = (req, res, next) => {
+    const authUser = getAuthUser(req);
+    if (!authUser) {
+      res.status(401).json({ success: false, message: '未登录或登录已失效' });
+      return;
+    }
+    if (authUser.role !== 'admin') {
+      res.status(403).json({ success: false, message: '仅管理员可执行该操作' });
+      return;
+    }
+    next();
+  };
+
+  app.get('/api/health', (_req, res) => {
+    res.json({ success: true, status: 'ok', service: 'api', timestamp: Date.now() });
+  });
+
+  app.get('/api/health/db', async (_req, res) => {
+    try {
+      await requirePool().query('SELECT 1');
+      res.json({ success: true, status: 'ok', database: activeDbConfig?.database || null, timestamp: Date.now() });
+    } catch (error: any) {
+      res.status(503).json({ success: false, status: 'error', message: error?.message || '数据库不可用' });
+    }
+  });
+
+  app.get('/api/db-config', requireAdmin, (_req, res) => {
     if (!activeDbConfig) return res.json(null);
     res.json({ ...activeDbConfig, password: activeDbConfig.password ? '********' : '' });
   });
 
-  app.post('/api/db-config', async (req, res) => {
+  app.post('/api/db-config', requireAdmin, async (req, res) => {
     try {
       await createPool(req.body as DbConfig);
       res.json({ success: true });
@@ -222,7 +353,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/db-config/test', async (req, res) => {
+  app.post('/api/db-config/test', requireAdmin, async (req, res) => {
     const config = req.body as DbConfig;
     try {
       const testPool = mysql.createPool({
@@ -244,7 +375,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/db-config/reset', (_req, res) => {
+  app.post('/api/db-config/reset', requireAdmin, (_req, res) => {
     res.status(410).json({ success: false, message: '当前版本不支持文件模式' });
   });
 
@@ -254,28 +385,41 @@ async function startServer() {
       const password = typeof req.body?.password === 'string' ? req.body.password.trim() : '';
       if (!username || !password) return res.status(400).json({ success: false, message: '用户名和密码必填' });
       const [users]: any = await requirePool().query(
-        'SELECT id, username, email, role FROM users WHERE username = ? AND password = ?',
-        [username, password]
+        'SELECT id, username, email, role, password FROM users WHERE username = ? LIMIT 1',
+        [username]
       );
-      if (!users.length) return res.status(401).json({ success: false, message: '用户名或密码错误' });
+      if (!users.length || !verifyPassword(users[0].password, password)) {
+        return res.status(401).json({ success: false, message: '用户名或密码错误' });
+      }
       const user = users[0];
-      res.json({ success: true, user: { uid: user.id, displayName: user.username, email: user.email || '', role: user.role } });
+      if (!String(user.password || '').startsWith(`${PASSWORD_PREFIX}$`)) {
+        await requirePool().query('UPDATE users SET password = ? WHERE id = ?', [hashPassword(password), user.id]);
+      }
+      const authUser: AuthUser = { id: user.id, username: user.username, email: user.email || '', role: user.role };
+      res.json({
+        success: true,
+        token: createAuthToken(authUser),
+        user: { uid: user.id, displayName: user.username, email: user.email || '', role: user.role },
+      });
     } catch (err: any) {
       console.error('Login error:', err);
       res.status(500).json({ success: false, message: err?.message || '登录失败' });
     }
   });
 
-  app.post('/api/users/register', async (req, res) => {
+  app.post('/api/users/register', requireAdmin, async (req, res) => {
     try {
-      const { username, password, email, role = 'user' } = req.body;
+      const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+      const password = typeof req.body?.password === 'string' ? req.body.password.trim() : '';
+      const email = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+      const role = req.body?.role === 'admin' ? 'admin' : 'user';
       if (!username || !password) return res.status(400).json({ success: false, message: '用户名和密码必填' });
       const userId = `user-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
       const [existing]: any = await requirePool().query('SELECT id FROM users WHERE username = ?', [username]);
       if (existing.length > 0) return res.status(400).json({ success: false, message: '用户名已存在' });
       await requirePool().query(
         'INSERT INTO users (id, username, password, email, role) VALUES (?, ?, ?, ?, ?)',
-        [userId, username, password, email || null, role]
+        [userId, username, hashPassword(password), email || null, role]
       );
       res.json({ success: true, user: { id: userId, username, email, role } });
     } catch (err: any) {
@@ -284,7 +428,7 @@ async function startServer() {
     }
   });
 
-  app.get('/api/users', async (_req, res) => {
+  app.get('/api/users', requireAdmin, async (_req, res) => {
     try {
       const [rows]: any = await requirePool().query('SELECT id, username, email, role, created_at FROM users ORDER BY created_at DESC');
       res.json(rows);
@@ -294,7 +438,7 @@ async function startServer() {
     }
   });
 
-  app.delete('/api/users/:id', async (req, res) => {
+  app.delete('/api/users/:id', requireAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       if (id === 'admin-1') return res.status(400).json({ success: false, message: '不能删除管理员账号' });
@@ -308,12 +452,13 @@ async function startServer() {
 
   app.get('/api/cases', async (req, res) => {
     try {
-      const { owner_id, case_type } = req.query;
+      const { case_type } = req.query;
+      const authUser = getAuthUser(req);
       let query = 'SELECT case_data FROM cases WHERE is_public = TRUE';
       const params: any[] = [];
-      if (owner_id && typeof owner_id === 'string') {
-        query += ' OR (is_public = FALSE AND owner_id = ?)';
-        params.push(owner_id);
+      if (authUser?.id) {
+        query += ' OR owner_id = ?';
+        params.push(authUser.id);
       }
       if (case_type && typeof case_type === 'string') {
         query = `SELECT case_data FROM cases WHERE (${query.replace('SELECT case_data FROM cases WHERE ', '')}) AND case_type = ?`;
@@ -375,11 +520,11 @@ async function startServer() {
     }
   });
 
-  app.post('/api/cases', async (req, res) => {
+  app.post('/api/cases', requireAuth, async (req, res) => {
     try {
       const incomingCase = req.body;
-      const userId = (req.headers['x-user-id'] as string | undefined)?.trim();
-      if (!userId) return res.status(401).json({ success: false, message: '未登录或登录已失效' });
+      const authUser = getAuthUser(req)!;
+      const userId = authUser.id;
       if (!incomingCase?.id) return res.status(400).json({ success: false, message: '案例 id 缺失' });
 
       const [existingRows]: any = await requirePool().query('SELECT owner_id, case_data FROM cases WHERE id = ? LIMIT 1', [incomingCase.id]);
@@ -421,11 +566,10 @@ async function startServer() {
     }
   });
 
-  app.delete('/api/cases/:id', async (req, res) => {
+  app.delete('/api/cases/:id', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
-      const userId = (req.headers['x-user-id'] as string | undefined)?.trim();
-      if (!userId) return res.status(401).json({ success: false, message: '未登录或登录已失效' });
+      const userId = getAuthUser(req)!.id;
       const [targetRows]: any = await requirePool().query('SELECT owner_id, case_data FROM cases WHERE id = ? LIMIT 1', [id]);
       if (!targetRows.length) return res.status(404).json({ success: false, message: '案例不存在' });
       const targetOwnerId = targetRows[0].owner_id;

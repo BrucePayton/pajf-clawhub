@@ -37,10 +37,11 @@ export const UserManagementPanel: React.FC<UserManagementPanelProps> = ({
   const fetchUsers = async () => {
     setLoading(true);
     try {
+      setError('');
       const userList = await apiService.getUsers();
       setUsers(userList);
-    } catch (_err) {
-      setError('获取用户列表失败');
+    } catch (err: any) {
+      setError(err?.message || '获取用户列表失败');
     } finally {
       setLoading(false);
     }

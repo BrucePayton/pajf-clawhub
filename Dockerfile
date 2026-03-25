@@ -1,4 +1,4 @@
-# 使用 Node 20 环境并利用 tsx 运行 TS
+# 使用 Node 20 环境运行统一服务
 FROM node:20-alpine
 
 # 设置工作目录
@@ -16,11 +16,8 @@ COPY . .
 # 构建前端
 RUN npm run build
 
-# 安装生产依赖
-RUN npm ci --production
-
 # 暴露端口
 EXPOSE 3010
 
-# 启动 Node 核心服务
+# 保留已安装依赖，避免运行时因裁剪 devDependencies 导致 tsx 缺失
 CMD ["npx", "tsx", "server.ts"]

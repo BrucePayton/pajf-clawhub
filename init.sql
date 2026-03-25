@@ -21,10 +21,4 @@ CREATE TABLE IF NOT EXISTS cases (
   FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
--- Insert or refresh default admin
-INSERT INTO users (id, username, password, role)
-VALUES ('admin-1', 'admin', 'admin', 'admin')
-ON DUPLICATE KEY UPDATE
-  username = VALUES(username),
-  password = VALUES(password),
-  role = VALUES(role);
+-- Default admin is initialized and password-hardened by the application on startup.

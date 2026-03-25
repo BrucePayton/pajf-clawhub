@@ -1,5 +1,6 @@
 import pptxgen from "pptxgenjs";
 import { Case, CaseType } from "../types";
+import { buildExportFileBaseName } from "./exportMeta";
 
 const splitText = (text: string) => {
   if (!text) return [];
@@ -406,7 +407,7 @@ export const exportToPptx = async (caseData: Case) => {
   });
 
   // Footer
-  slide.addText(splitText("OpenClaw Value Canvas Framework v1.0"), {
+  slide.addText(splitText("平安财服应用价值案例库"), {
     x: 0.5,
     y: 5.3,
     w: 4,
@@ -422,7 +423,7 @@ export const exportToPptx = async (caseData: Case) => {
     const url = window.URL.createObjectURL(blob as Blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${safeCase.title.replace(/[\\/:*?"<>|]/g, '_')}.pptx`;
+    a.download = `${buildExportFileBaseName(safeCase)}.pptx`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -430,7 +431,7 @@ export const exportToPptx = async (caseData: Case) => {
   } catch (err) {
     console.error("PPTX write error:", err);
     // Fallback to library's internal method if blob fails
-    await pptx.writeFile({ fileName: `${safeCase.title.replace(/[\\/:*?"<>|]/g, '_')}.pptx` });
+    await pptx.writeFile({ fileName: `${buildExportFileBaseName(safeCase)}.pptx` });
   }
 };
 

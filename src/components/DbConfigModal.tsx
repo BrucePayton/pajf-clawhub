@@ -46,11 +46,24 @@ export const DbConfigModal: React.FC<DbConfigModalProps> = ({
     setIsSaving(false);
   };
 
-  const sqlSchema = `CREATE TABLE IF NOT EXISTS cases (
+  const sqlSchema = `CREATE TABLE IF NOT EXISTS users (
+  id VARCHAR(255) PRIMARY KEY,
+  username VARCHAR(255) UNIQUE NOT NULL,
+  password VARCHAR(255) NOT NULL,
+  email VARCHAR(255),
+  role VARCHAR(50) DEFAULT 'user',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS cases (
   id VARCHAR(255) PRIMARY KEY,
   case_data JSON NOT NULL,
+  case_type VARCHAR(64) NOT NULL DEFAULT 'openclaw_app',
+  owner_id VARCHAR(255),
+  is_public BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL
 );`;
 
   const downloadSql = () => {
@@ -238,7 +251,7 @@ export const DbConfigModal: React.FC<DbConfigModalProps> = ({
               </motion.div>
             )}
             <p className="text-[10px] text-neutral-400 mt-4 font-bold uppercase tracking-wider text-center">
-              Please execute the SQL above in your database to initialize.
+              服务端启动时也会自动校验并补齐以上表结构。
             </p>
           </div>
         </div>

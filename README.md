@@ -36,35 +36,49 @@ OpenClawCaseCollection（基于 React + Vite 的案件管理与展示系统）
 5. 部署方式：可直接 `npm run build` →  `nginx` 静态服务或 Docker 部署
 
 ## 本地运行
-**前置条件：** Node.js、npm
+**前置条件：** Node.js、npm、MySQL
 
 1. 安装依赖：
    `npm install`
 2. 配置环境变量：
-   - 在项目根目录创建 `.env`（或 `.env.local`）
-   - 添加必要项，如 `GEMINI_API_KEY`、MySQL 连接：
+   - 复制 `.env.example` 为 `.env`
+   - 填写必要项，如 `GEMINI_API_KEY`、MySQL 连接：
      ```text
      GEMINI_API_KEY=xxxx
-     MYSQL_HOST=localhost
-     MYSQL_PORT=3306
-     MYSQL_USER=root
-     MYSQL_PASS=123456
-     MYSQL_DB=cases
+     AUTH_SECRET=change-me-in-production
+     DB_HOST=localhost
+     DB_PORT=3306
+     DB_USER=root
+     DB_PASSWORD=123456
+     DB_NAME=OpenclawAppPlatform
+     PORT=3010
+     HOST=0.0.0.0
      ```
-3. 启动开发：`npm run dev`
-4. 浏览器访问：`http://localhost:3010`
+3. 启动开发：
+   `npm run dev`
+4. 浏览器访问：
+   `http://localhost:3010`
 
-## 生产构建
-1. 执行：`npm run build`
-2. 启动静态服务（示例使用 nginx）：
-   - 修改 `nginx.conf` 使 `root` 指向 `dist`
-   - `docker run -d --name openclaw-nginx -p 8080:80 -v $(pwd)/dist:/usr/share/nginx/html:ro -v $(pwd)/nginx.conf:/etc/nginx/nginx.conf:ro --restart always nginx:latest`
-3. 访问：`http://localhost:8080`
+## Docker 部署
+1. 确认已配置好 `.env` 或直接使用 `docker-compose.yml` 中的默认值。
+2. 启动服务：
+   `docker compose up -d --build`
+3. 浏览器访问：
+   `http://localhost`
+
+当前 Compose 链路为：
+- `web`：Nginx 静态托管 + 反向代理
+- `api`：Node/Express 服务，监听 `3010`
+- `mysql-server`：MySQL 8.4，初始化数据库 `OpenclawAppPlatform`
 
 ## 验证与调试
-- `npm run lint`：ts 类型检查
-- `npm run dev`：开发模式（watch + vite）
-- `docker logs openclaw-nginx --tail 50`：查看 nginx 代理日志
+- `npm run lint`：TypeScript 类型检查
+- `npm run dev`：开发模式
+- `curl http://localhost:3010/api/health`：检查 API 进程健康状态
+- `curl http://localhost:3010/api/health/db`：检查数据库连接状态
+- `docker logs openclaw-api --tail 100`：查看 API 启动日志
+- `docker logs openclaw-nginx --tail 100`：查看 Nginx 代理日志
+- `docker logs mysql-server --tail 100`：查看 MySQL 启动日志
 - 说明：当前版本不再支持文件存储回退，MySQL 不可用时服务会启动失败。
 
 ## 目录结构

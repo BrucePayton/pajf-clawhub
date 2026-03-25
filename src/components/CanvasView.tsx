@@ -4,6 +4,7 @@ import { ArrowLeft, Download, Globe, Target, Zap, TrendingUp, Calendar, Clock, C
 import { Case } from '../types';
 import { exportToPptx } from '../services/pptxService';
 import { exportElementToPdf } from '../services/pdfService';
+import { buildExportFileBaseName, getCaseTypeLabel } from '../services/exportMeta';
 
 interface CanvasViewProps {
   caseData: Case;
@@ -39,7 +40,7 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
     }
     try {
       showToast('正在生成 PDF...');
-      await exportElementToPdf(exportAreaRef.current, caseData.title);
+      await exportElementToPdf(exportAreaRef.current, buildExportFileBaseName(caseData));
       showToast('PDF 导出成功');
     } catch (error) {
       console.error('PDF export error:', error);
@@ -61,6 +62,9 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
           <div>
             <div className="flex items-center gap-3 mb-1.5">
               <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-neutral-900">{caseData.title}</h1>
+              <span className="px-2 py-1 bg-orange-50 text-orange-700 rounded-lg text-[10px] font-bold tracking-wider border border-orange-100">
+                {getCaseTypeLabel(caseData.caseType)}
+              </span>
               <span className="px-2 py-1 bg-brand-500 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-md shadow-brand-500/20">v{(caseData.version ?? 0).toFixed(1)}</span>
             </div>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-neutral-400 font-semibold text-[10px] uppercase tracking-widest mt-2">
