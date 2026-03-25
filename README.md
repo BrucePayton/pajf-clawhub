@@ -66,10 +66,42 @@ OpenClawCaseCollection（基于 React + Vite 的案件管理与展示系统）
 3. 浏览器访问：
    `http://localhost`
 
+推荐使用一键部署脚本（包含迁移与健康检查）：
+- `bash start.sh`
+
 当前 Compose 链路为：
 - `web`：Nginx 静态托管 + 反向代理
 - `api`：Node/Express 服务，监听 `3010`
-- `mysql-server`：MySQL latest，初始化数据库 `OpenclawAppPlatform`
+- `mysql-server`：MySQL 8.4，初始化数据库 `OpenclawAppPlatform`
+
+## 数据库迁移手册
+
+### 迁移原则
+- `init.sql` 仅负责创建数据库和 `schema_migrations` 表。
+- 业务表结构与增量变更统一由 `migrations/*.sql` 管理。
+- API 启动时只校验 schema 版本，不再自动补表字段。
+
+### 首次部署
+1. 启动 MySQL：`docker compose up -d mysql-server`
+2. 执行迁移：`docker compose run --rm --no-deps api npm run migrate`
+3. 启动应用：`docker compose up -d --build api web`
+
+### 增量发布
+1. 拉取代码并构建前端：`npm install && npm run build`
+2. 执行迁移：`docker compose run --rm --no-deps api npm run migrate`
+3. 重启应用：`docker compose up -d --build api web`
+
+### 回滚建议
+- 代码回滚：切回上一个稳定版本后重新构建并重启容器。
+- 数据回滚：优先使用 MySQL 备份恢复，不建议手工逆向改表。
+- 若迁移失败，不要直接启动 API，先修复迁移脚本并重新执行 `npm run migrate`。
+
+### 常见排障
+- schema 版本不匹配：先执行 `npm run migrate`，再重启 API。
+- 容器异常：`docker compose ps`
+- API 日志：`docker logs openclaw-api --tail 150`
+- Nginx 日志：`docker logs openclaw-nginx --tail 150`
+- MySQL 日志：`docker logs mysql-server --tail 150`
 
 ## 验证与调试
 - `npm run lint`：TypeScript 类型检查

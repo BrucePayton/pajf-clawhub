@@ -55,8 +55,27 @@ npm run build
 log "停止旧容器并清理孤儿容器"
 docker compose down --remove-orphans
 
-log "启动 Docker Compose"
-docker compose up -d --build
+log "先启动 MySQL"
+docker compose up -d mysql-server
+
+log "等待 MySQL 健康检查通过"
+for i in $(seq 1 30); do
+  MYSQL_HEALTH=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}unknown{{end}}' mysql-server 2>/dev/null || true)
+  if [ "$MYSQL_HEALTH" = "healthy" ]; then
+    break
+  fi
+  sleep 2
+  if [ "$i" -eq 30 ]; then
+    echo "MySQL 健康检查超时"
+    exit 1
+  fi
+done
+
+log "执行数据库迁移"
+docker compose run --rm --no-deps api npm run migrate
+
+log "启动 API 和 Nginx"
+docker compose up -d --build api web
 
 log "等待 API 健康检查通过"
 for i in $(seq 1 30); do

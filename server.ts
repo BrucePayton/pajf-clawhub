@@ -10,6 +10,7 @@ import os from 'os';
 import crypto from 'crypto';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { REQUIRED_SCHEMA_VERSION } from './schemaVersion';
 
 dotenv.config();
 
@@ -220,46 +221,39 @@ const createBootstrapCases = () => {
   ];
 };
 
-async function initDb() {
+async function verifySchemaVersion() {
   if (!pool) throw new Error('MySQL pool not initialized');
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id VARCHAR(255) PRIMARY KEY,
-      username VARCHAR(255) UNIQUE NOT NULL,
-      password VARCHAR(255) NOT NULL,
-      email VARCHAR(255),
-      role VARCHAR(50) DEFAULT 'user',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-  `);
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS cases (
-      id VARCHAR(255) PRIMARY KEY,
-      case_data JSON NOT NULL,
-      case_type VARCHAR(64) NOT NULL DEFAULT 'openclaw_app',
-      owner_id VARCHAR(255),
-      is_public BOOLEAN DEFAULT FALSE,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-  `);
-  const [caseTypeColumnRows]: any = await pool.query(
+  const [tableRows]: any = await pool.query(
     `
       SELECT COUNT(*) AS total
-      FROM INFORMATION_SCHEMA.COLUMNS
+      FROM INFORMATION_SCHEMA.TABLES
       WHERE TABLE_SCHEMA = DATABASE()
-        AND TABLE_NAME = 'cases'
-        AND COLUMN_NAME = 'case_type'
+        AND TABLE_NAME = 'schema_migrations'
     `
   );
-  const hasCaseTypeColumn = Number(caseTypeColumnRows?.[0]?.total ?? 0) > 0;
-  if (!hasCaseTypeColumn) {
-    await pool.query(`
-      ALTER TABLE cases
-      ADD COLUMN case_type VARCHAR(64) NOT NULL DEFAULT 'openclaw_app'
-    `);
+  if (Number(tableRows?.[0]?.total ?? 0) === 0) {
+    throw new Error(
+      'schema_migrations not found. Please run database migrations first: npm run migrate'
+    );
   }
+
+  const [requiredRows]: any = await pool.query(
+    'SELECT version FROM schema_migrations WHERE version = ? LIMIT 1',
+    [REQUIRED_SCHEMA_VERSION]
+  );
+  if (!requiredRows.length) {
+    const [latestRows]: any = await pool.query(
+      'SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 1'
+    );
+    const currentVersion = latestRows?.[0]?.version || 'none';
+    throw new Error(
+      `Schema version mismatch. current=${currentVersion}, required=${REQUIRED_SCHEMA_VERSION}. Please run: npm run migrate`
+    );
+  }
+}
+
+async function ensureBootstrapAdmin() {
+  if (!pool) throw new Error('MySQL pool not initialized');
   const defaultAdminPassword = hashPassword('admin');
   await pool.query(
     `
@@ -289,7 +283,8 @@ async function createPool(config: DbConfig) {
   const connection = await pool.getConnection();
   await connection.query('SELECT 1');
   connection.release();
-  await initDb();
+  await verifySchemaVersion();
+  await ensureBootstrapAdmin();
   activeDbConfig = config;
   console.log('[MySQL] connected and verified');
 }

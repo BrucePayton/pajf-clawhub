@@ -1,24 +1,10 @@
 CREATE DATABASE IF NOT EXISTS OpenclawAppPlatform;
 USE OpenclawAppPlatform;
 
-CREATE TABLE IF NOT EXISTS users (
-  id VARCHAR(255) PRIMARY KEY,
-  username VARCHAR(255) UNIQUE NOT NULL,
-  password VARCHAR(255) NOT NULL,
-  email VARCHAR(255),
-  role VARCHAR(50) DEFAULT 'user',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+CREATE TABLE IF NOT EXISTS schema_migrations (
+  version VARCHAR(32) PRIMARY KEY,
+  filename VARCHAR(255) NOT NULL,
+  applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS cases (
-  id VARCHAR(255) PRIMARY KEY,
-  case_data JSON NOT NULL,
-  case_type VARCHAR(64) NOT NULL DEFAULT 'openclaw_app',
-  owner_id VARCHAR(255),
-  is_public BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL
-);
-
--- Default admin is initialized and password-hardened by the application on startup.
+-- 业务表结构由 migrations/*.sql 管理，请通过 `npm run migrate` 执行迁移。

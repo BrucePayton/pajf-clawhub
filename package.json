@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node --experimental-strip-types server.ts",
+    "migrate": "tsx scripts/migrate.ts",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
