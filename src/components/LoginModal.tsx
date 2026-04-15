@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Lock, User, LogIn } from 'lucide-react';
 
 interface LoginModalProps {
-  onLogin: (user: string, pass: string) => void;
+  onLogin: (umNumber: string, pass: string) => void;
   onClose: () => void;
   error?: string;
 }
@@ -31,13 +31,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLogin, onClose, error 
         </div>
         
         <div className="text-center mb-10">
-          <h2 className="text-3xl font-black text-neutral-900 mb-2">管理员登录</h2>
-          <p className="text-neutral-400 text-xs font-bold uppercase tracking-widest">Administrator Login</p>
+          <h2 className="text-3xl font-black text-neutral-900 mb-2">账号登录</h2>
+          <p className="text-neutral-400 text-xs font-bold uppercase tracking-widest">UM Login</p>
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-neutral-400 uppercase tracking-[0.2em] ml-1">用户名 / USERNAME</label>
+            <label className="text-[10px] font-black text-neutral-400 uppercase tracking-[0.2em] ml-1">员工UM号 / UM NUMBER</label>
             <div className="relative group">
               <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400 group-focus-within:text-brand-500 transition-colors" />
               <input 
@@ -45,7 +45,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLogin, onClose, error 
                 value={user}
                 onChange={(e) => setUser(e.target.value)}
                 className="input-modern pl-12 h-14"
-                placeholder="admin"
+                placeholder="请输入UM号"
                 required
               />
             </div>

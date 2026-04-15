@@ -14,7 +14,7 @@ import { REQUIRED_SCHEMA_VERSION } from './schemaVersion';
 
 dotenv.config();
 
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3010;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3004;
 const HOST = process.env.HOST || '0.0.0.0';
 
 type DbConfig = {
@@ -41,7 +41,12 @@ type CaseType = 'openclaw_app' | 'tool_app' | 'agent_app' | 'rpa_app' | 'dashboa
 type AuthUser = {
   id: string;
   username: string;
+  displayName: string;
+  umNumber: string;
   email: string;
+  team: string;
+  organization: string;
+  defaultCasePublic: boolean;
   role: string;
 };
 type AuthenticatedRequest = express.Request & { authUser?: AuthUser | null };
@@ -83,7 +88,12 @@ const createAuthToken = (user: AuthUser) => {
     JSON.stringify({
       uid: user.id,
       username: user.username,
+      displayName: user.displayName,
+      umNumber: user.umNumber,
       email: user.email || '',
+      team: user.team,
+      organization: user.organization,
+      defaultCasePublic: user.defaultCasePublic === true,
       role: user.role,
       exp: Date.now() + AUTH_TOKEN_TTL_MS,
     })
@@ -104,7 +114,12 @@ const parseAuthToken = (token: string): AuthUser | null => {
     return {
       id: payload.uid,
       username: payload.username || '',
+      displayName: payload.displayName || payload.username || '',
+      umNumber: payload.umNumber || payload.username || '',
       email: payload.email || '',
+      team: payload.team || '',
+      organization: payload.organization || '财服总部',
+      defaultCasePublic: payload.defaultCasePublic === true,
       role: payload.role,
     };
   } catch (_error) {
@@ -269,10 +284,15 @@ async function ensureBootstrapAdmin() {
   const defaultAdminPassword = hashPassword('admin');
   await pool.query(
     `
-      INSERT INTO users (id, username, password, role)
-      VALUES ('admin-1', 'admin', ?, 'admin')
+      INSERT INTO users (id, username, um_number, real_name, team, organization, default_case_public, password, role)
+      VALUES ('admin-1', 'admin', 'admin', '系统管理员', '平台运维', '财服总部', FALSE, ?, 'admin')
       ON DUPLICATE KEY UPDATE
         username = VALUES(username),
+        um_number = VALUES(um_number),
+        real_name = VALUES(real_name),
+        team = VALUES(team),
+        organization = VALUES(organization),
+        default_case_public = VALUES(default_case_public),
         password = VALUES(password),
         role = VALUES(role)
     `,
@@ -406,25 +426,53 @@ async function startServer() {
 
   app.post('/api/login', async (req, res) => {
     try {
-      const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+      const umNumber = typeof req.body?.umNumber === 'string'
+        ? req.body.umNumber.trim()
+        : (typeof req.body?.username === 'string' ? req.body.username.trim() : '');
       const password = typeof req.body?.password === 'string' ? req.body.password.trim() : '';
-      if (!username || !password) return res.status(400).json({ success: false, message: '用户名和密码必填' });
+      if (!umNumber || !password) return res.status(400).json({ success: false, message: 'UM号和密码必填' });
       const [users]: any = await requirePool().query(
-        'SELECT id, username, email, role, password FROM users WHERE username = ? LIMIT 1',
-        [username]
+        `
+          SELECT id, username, um_number, real_name, email, team, organization, default_case_public, role, password
+          FROM users
+          WHERE um_number = ? OR username = ?
+          ORDER BY CASE WHEN um_number = ? THEN 0 ELSE 1 END
+          LIMIT 1
+        `,
+        [umNumber, umNumber, umNumber]
       );
       if (!users.length || !verifyPassword(users[0].password, password)) {
-        return res.status(401).json({ success: false, message: '用户名或密码错误' });
+        return res.status(401).json({ success: false, message: 'UM号或密码错误' });
       }
       const user = users[0];
       if (!String(user.password || '').startsWith(`${PASSWORD_PREFIX}$`)) {
         await requirePool().query('UPDATE users SET password = ? WHERE id = ?', [hashPassword(password), user.id]);
       }
-      const authUser: AuthUser = { id: user.id, username: user.username, email: user.email || '', role: user.role };
+      const authUser: AuthUser = {
+        id: user.id,
+        username: user.username || user.um_number,
+        displayName: user.real_name || user.username || user.um_number,
+        umNumber: user.um_number || user.username,
+        email: user.email || '',
+        team: user.team || '',
+        organization: user.organization || '财服总部',
+        defaultCasePublic: user.default_case_public === true,
+        role: user.role,
+      };
       res.json({
         success: true,
         token: createAuthToken(authUser),
-        user: { uid: user.id, displayName: user.username, email: user.email || '', role: user.role },
+        user: {
+          uid: user.id,
+          displayName: authUser.displayName,
+          username: authUser.username,
+          umNumber: authUser.umNumber,
+          email: authUser.email,
+          team: authUser.team,
+          organization: authUser.organization,
+          defaultCasePublic: authUser.defaultCasePublic,
+          role: authUser.role,
+        },
       });
     } catch (err: any) {
       console.error('Login error:', err);
@@ -434,19 +482,30 @@ async function startServer() {
 
   app.post('/api/users/register', requireAdmin, async (req, res) => {
     try {
-      const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+      const realName = typeof req.body?.realName === 'string' ? req.body.realName.trim() : '';
+      const umNumber = typeof req.body?.umNumber === 'string' ? req.body.umNumber.trim() : '';
+      const team = typeof req.body?.team === 'string' ? req.body.team.trim() : '';
+      const organization = typeof req.body?.organization === 'string' ? req.body.organization.trim() : '';
       const password = typeof req.body?.password === 'string' ? req.body.password.trim() : '';
       const email = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
       const role = req.body?.role === 'admin' ? 'admin' : 'user';
-      if (!username || !password) return res.status(400).json({ success: false, message: '用户名和密码必填' });
+      if (!realName || !umNumber || !team || !organization || !password) {
+        return res.status(400).json({ success: false, message: '姓名、UM号、所属团队、所属组织和密码必填' });
+      }
       const userId = `user-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-      const [existing]: any = await requirePool().query('SELECT id FROM users WHERE username = ?', [username]);
-      if (existing.length > 0) return res.status(400).json({ success: false, message: '用户名已存在' });
+      const [existing]: any = await requirePool().query('SELECT id FROM users WHERE um_number = ?', [umNumber]);
+      if (existing.length > 0) return res.status(400).json({ success: false, message: 'UM号已存在' });
       await requirePool().query(
-        'INSERT INTO users (id, username, password, email, role) VALUES (?, ?, ?, ?, ?)',
-        [userId, username, hashPassword(password), email || null, role]
+        `
+          INSERT INTO users (id, username, um_number, real_name, team, organization, default_case_public, password, email, role)
+          VALUES (?, ?, ?, ?, ?, ?, FALSE, ?, ?, ?)
+        `,
+        [userId, umNumber, umNumber, realName, team, organization, hashPassword(password), email || null, role]
       );
-      res.json({ success: true, user: { id: userId, username, email, role } });
+      res.json({
+        success: true,
+        user: { id: userId, username: umNumber, umNumber, realName, team, organization, email, role, defaultCasePublic: false },
+      });
     } catch (err: any) {
       console.error('Error registering user:', err);
       res.status(500).json({ success: false, message: err?.message || '注册失败' });
@@ -455,11 +514,72 @@ async function startServer() {
 
   app.get('/api/users', requireAdmin, async (_req, res) => {
     try {
-      const [rows]: any = await requirePool().query('SELECT id, username, email, role, created_at FROM users ORDER BY created_at DESC');
+      const [rows]: any = await requirePool().query(
+        `
+          SELECT id, username, um_number, real_name, team, organization, email, role, default_case_public, created_at
+          FROM users
+          ORDER BY created_at DESC
+        `
+      );
       res.json(rows);
     } catch (err: any) {
       console.error('Error fetching users:', err);
       res.status(500).json({ error: err?.message || '读取用户列表失败' });
+    }
+  });
+
+  app.patch('/api/users/me/preferences', requireAuth, async (req, res) => {
+    try {
+      const authUser = getAuthUser(req)!;
+      const defaultCasePublic = req.body?.defaultCasePublic === true;
+      await requirePool().query('UPDATE users SET default_case_public = ? WHERE id = ?', [defaultCasePublic, authUser.id]);
+      const [rows]: any = await requirePool().query(
+        'SELECT id, username, um_number, real_name, email, team, organization, default_case_public, role FROM users WHERE id = ? LIMIT 1',
+        [authUser.id]
+      );
+      if (!rows.length) return res.status(404).json({ success: false, message: '用户不存在' });
+      const next = rows[0];
+      res.json({
+        success: true,
+        user: {
+          uid: next.id,
+          displayName: next.real_name || next.username || next.um_number,
+          username: next.username || next.um_number,
+          umNumber: next.um_number || next.username,
+          email: next.email || '',
+          team: next.team || '',
+          organization: next.organization || '财服总部',
+          defaultCasePublic: next.default_case_public === true,
+          role: next.role,
+        },
+      });
+    } catch (err: any) {
+      console.error('Error updating preferences:', err);
+      res.status(500).json({ success: false, message: err?.message || '更新偏好失败' });
+    }
+  });
+
+  app.post('/api/users/me/password', requireAuth, async (req, res) => {
+    try {
+      const authUser = getAuthUser(req)!;
+      const currentPassword = typeof req.body?.currentPassword === 'string' ? req.body.currentPassword : '';
+      const nextPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
+      if (!currentPassword || !nextPassword) {
+        return res.status(400).json({ success: false, message: '当前密码和新密码必填' });
+      }
+      if (nextPassword.trim().length < 6) {
+        return res.status(400).json({ success: false, message: '新密码长度至少 6 位' });
+      }
+      const [rows]: any = await requirePool().query('SELECT id, password FROM users WHERE id = ? LIMIT 1', [authUser.id]);
+      if (!rows.length) return res.status(404).json({ success: false, message: '用户不存在' });
+      if (!verifyPassword(rows[0].password || '', currentPassword)) {
+        return res.status(400).json({ success: false, message: '当前密码不正确' });
+      }
+      await requirePool().query('UPDATE users SET password = ? WHERE id = ?', [hashPassword(nextPassword.trim()), authUser.id]);
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error('Error changing password:', err);
+      res.status(500).json({ success: false, message: err?.message || '修改密码失败' });
     }
   });
 
@@ -640,7 +760,7 @@ async function startServer() {
       const commentId = `cmt-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
       await requirePool().query(
         'INSERT INTO case_comments (id, case_id, user_id, username, content) VALUES (?, ?, ?, ?, ?)',
-        [commentId, caseId, authUser.id, authUser.username, content.trim()]
+        [commentId, caseId, authUser.id, authUser.displayName || authUser.username, content.trim()]
       );
       const [newRow]: any = await requirePool().query(
         'SELECT id, case_id, user_id, username, content, created_at FROM case_comments WHERE id = ?',

@@ -34,6 +34,9 @@ OpenClawCaseCollection（基于 React + Vite 的案件管理与展示系统）
 3. PPT 导出：一键从案件数据生成 PPT 文件
 4. 环境配置：支持 `GEMINI_API_KEY`、MySQL 连接配置
 5. 部署方式：可直接 `npm run build` →  `nginx` 静态服务或 Docker 部署
+6. 账号体系：使用员工 UM 号登录；用户资料含姓名、UM号、团队、组织
+7. 安全能力：支持登录后修改本人密码
+8. 编辑体验：新建案例自动带出用户资料；私密/公开默认值按用户偏好持续生效
 
 ## 本地运行
 **前置条件：** Node.js、npm、MySQL

@@ -1,6 +1,9 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Save, Globe, Target, Zap, TrendingUp, Calendar, Plus, Trash2, Clock, CheckCircle, Rocket, Layout, ChevronRight, Info, Upload, Image as ImageIcon, Lock, Eye } from 'lucide-react';
+import { ArrowLeft, Save, Globe, Target, Zap, TrendingUp, Calendar, Plus, Trash2, Clock, CheckCircle, Rocket, Layout, ChevronRight, Info, Upload, Image as ImageIcon, Lock, Eye, GripVertical } from 'lucide-react';
+import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Case, CaseStep, MetricCard, RoadmapItem, CaseType } from '../types';
 
 type CaseTypeConfig = {
@@ -73,6 +76,7 @@ interface EditorProps {
   onBack: () => void;
   onSave: () => void;
   onPublish: () => void;
+  onVisibilityPreferenceChange?: (isPublic: boolean) => void;
   showToast: (message: string, type?: 'success' | 'error' | 'info' | 'loading') => void;
 }
 
@@ -82,8 +86,23 @@ export const Editor: React.FC<EditorProps> = ({
   onBack,
   onSave,
   onPublish,
+  onVisibilityPreferenceChange,
   showToast
 }) => {
+  const clearTemplateText = (value: string) => {
+    if (
+      value.includes('业务背景描述：') ||
+      value.includes('痛点 1：[……]') ||
+      value.includes('主要内容：[……]') ||
+      value.includes('详细描述在该步骤中需要执行的操作。') ||
+      value.includes('详细描述该步骤的关键设置或代码片段说明。') ||
+      value.includes('描述任务如何启动、如何监控状态及获取结果。')
+    ) {
+      return '';
+    }
+    return value;
+  };
+
   const caseType: CaseType = caseData.caseType || 'openclaw_app';
   const caseTypeConfig = CASE_TYPE_CONFIG[caseType];
   const meta = caseData.caseTypeMeta || {};
@@ -167,6 +186,151 @@ export const Editor: React.FC<EditorProps> = ({
     setCaseData((prev: any) => ({ ...prev, implementation: { ...prev.implementation, steps: (prev.implementation?.steps || []).filter((s: any) => s.id !== id) } }));
   };
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const currentSteps = [...(caseData.implementation?.steps ?? [])];
+    const oldIndex = currentSteps.findIndex((s) => s.id === String(active.id));
+    const newIndex = currentSteps.findIndex((s) => s.id === String(over.id));
+    if (oldIndex < 0 || newIndex < 0) return;
+    const reordered = arrayMove(currentSteps, oldIndex, newIndex);
+    setCaseData({
+      ...caseData,
+      implementation: {
+        ...caseData.implementation,
+        steps: reordered,
+      },
+    });
+  };
+
+  const SortableStepCard: React.FC<{ step: CaseStep; index: number }> = ({ step, index }) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id: step.id });
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+    };
+
+    return (
+      <motion.div
+        ref={setNodeRef}
+        style={style}
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className={`p-5 bg-neutral-50/50 rounded-2xl border border-neutral-200/60 flex gap-5 items-start group ${isDragging ? 'shadow-xl ring-2 ring-brand-200 bg-white' : ''}`}
+      >
+        <div className="flex flex-col items-center gap-2 shrink-0">
+          <div className="w-10 h-10 bg-white border border-neutral-200/60 rounded-xl flex items-center justify-center font-bold text-neutral-400">
+            {index + 1}
+          </div>
+          <button
+            type="button"
+            className="p-1.5 rounded-lg bg-neutral-100 text-neutral-400 hover:text-brand-600 hover:bg-brand-50 cursor-grab active:cursor-grabbing"
+            title="拖拽调整顺序"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex-1 grid grid-cols-3 gap-4">
+          <div className="col-span-2 space-y-2">
+            <input
+              type="text"
+              value={step.title}
+              onChange={(e) => {
+                const newSteps = [...(caseData.implementation?.steps ?? [])];
+                newSteps[index].title = e.target.value;
+                setCaseData({ ...caseData, implementation: { ...caseData.implementation, steps: newSteps } });
+              }}
+              onFocus={(e) => {
+                const next = clearTemplateText(e.currentTarget.value);
+                if (next !== e.currentTarget.value) {
+                  const newSteps = [...(caseData.implementation?.steps ?? [])];
+                  newSteps[index].title = next;
+                  setCaseData({ ...caseData, implementation: { ...caseData.implementation, steps: newSteps } });
+                }
+              }}
+              className={`w-full px-4 py-2 bg-white border border-neutral-200/60 rounded-lg focus:border-brand-500 transition-all outline-none font-bold text-sm ${
+                clearTemplateText(step.title) === '' && step.title ? 'text-neutral-300' : ''
+              }`}
+              placeholder={caseTypeConfig.stepTitlePlaceholder}
+            />
+            <textarea
+              value={step.description}
+              onChange={(e) => {
+                const newSteps = [...(caseData.implementation?.steps ?? [])];
+                newSteps[index].description = e.target.value;
+                setCaseData({ ...caseData, implementation: { ...caseData.implementation, steps: newSteps } });
+              }}
+              onFocus={(e) => {
+                const next = clearTemplateText(e.currentTarget.value);
+                if (next !== e.currentTarget.value) {
+                  const newSteps = [...(caseData.implementation?.steps ?? [])];
+                  newSteps[index].description = next;
+                  setCaseData({ ...caseData, implementation: { ...caseData.implementation, steps: newSteps } });
+                }
+              }}
+              className={`w-full px-4 py-2 bg-white border border-neutral-200/60 rounded-lg focus:border-brand-500 transition-all outline-none text-xs min-h-[60px] resize-none ${
+                clearTemplateText(step.description) === '' && step.description ? 'text-neutral-300' : 'text-neutral-500'
+              }`}
+              placeholder={caseTypeConfig.stepDescPlaceholder}
+            />
+          </div>
+          <div className="flex flex-col gap-2 items-center">
+            <div className="relative group/img w-24 h-16 bg-white border border-dashed border-neutral-200 rounded-lg overflow-hidden flex items-center justify-center">
+              {step.imageUrl ? (
+                <>
+                  <img src={step.imageUrl} alt="" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <label className="p-1.5 bg-white/20 hover:bg-white/40 rounded-lg cursor-pointer transition-colors">
+                      <Upload className="w-3 h-3 text-white" />
+                      <input type="file" className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(index, e.target.files[0])} />
+                    </label>
+                    <button
+                      onClick={() => {
+                        const newSteps = [...(caseData.implementation?.steps ?? [])];
+                        newSteps[index].imageUrl = '';
+                        setCaseData({ ...caseData, implementation: { ...caseData.implementation, steps: newSteps } });
+                      }}
+                      className="p-1.5 bg-white/20 hover:bg-red-500/40 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-3 h-3 text-white" />
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <label className="flex flex-col items-center gap-1 cursor-pointer hover:text-brand-500 transition-colors">
+                  <ImageIcon className="w-4 h-4 text-neutral-300" />
+                  <span className="text-[8px] font-bold text-neutral-400 uppercase">上传图片</span>
+                  <input type="file" className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(index, e.target.files[0])} />
+                </label>
+              )}
+            </div>
+            <button
+              onClick={() => removeStep(step.id)}
+              className="p-2 text-neutral-300 hover:text-red-500 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    );
+  };
+
   const addMetric = () => {
     const newMetric: MetricCard = { id: Date.now().toString(), label: '', value: '', subtext: '', icon: 'trending-up' };
     setCaseData((prev: any) => ({ ...prev, businessValue: { ...prev.businessValue, metrics: [...(prev.businessValue?.metrics || []), newMetric] } }));
@@ -210,12 +374,19 @@ export const Editor: React.FC<EditorProps> = ({
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 px-3 py-2 bg-neutral-50 rounded-xl border border-neutral-200">
             <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={!!caseData.isPublic}
-                onChange={(e) => setCaseData({ ...caseData, isPublic: e.target.checked })}
-                className="w-4 h-4 rounded border-neutral-300 text-brand-500 focus:ring-brand-500"
-              />
+              <button
+                type="button"
+                onClick={() => {
+                  const nextPublic = !caseData.isPublic;
+                  setCaseData({ ...caseData, isPublic: nextPublic });
+                  onVisibilityPreferenceChange?.(nextPublic);
+                }}
+                className={`relative w-11 h-6 rounded-full transition-colors ${caseData.isPublic ? 'bg-brand-500' : 'bg-neutral-300'}`}
+              >
+                <span
+                  className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${caseData.isPublic ? 'translate-x-5' : 'translate-x-0.5'}`}
+                />
+              </button>
               <span className="text-xs font-bold text-neutral-600 flex items-center gap-1.5">
                 {caseData.isPublic ? (
                   <>
@@ -339,6 +510,12 @@ export const Editor: React.FC<EditorProps> = ({
               <textarea 
                 value={caseData.challenges?.background ?? ''}
                 onChange={(e) => setCaseData({ ...caseData, challenges: { ...caseData.challenges, background: e.target.value } })}
+                onFocus={(e) => {
+                  const next = clearTemplateText(e.currentTarget.value);
+                  if (next !== e.currentTarget.value) {
+                    setCaseData({ ...caseData, challenges: { ...caseData.challenges, background: next } });
+                  }
+                }}
                 className="input-modern min-h-[100px] resize-none"
                 placeholder={caseTypeConfig.challengePlaceholder}
               />
@@ -348,6 +525,12 @@ export const Editor: React.FC<EditorProps> = ({
               <textarea 
                 value={caseData.challenges?.objectives ?? ''}
                 onChange={(e) => setCaseData({ ...caseData, challenges: { ...caseData.challenges, objectives: e.target.value } })}
+                onFocus={(e) => {
+                  const next = clearTemplateText(e.currentTarget.value);
+                  if (next !== e.currentTarget.value) {
+                    setCaseData({ ...caseData, challenges: { ...caseData.challenges, objectives: next } });
+                  }
+                }}
                 className="input-modern min-h-[80px] resize-none"
                 placeholder="描述项目目标..."
               />
@@ -382,80 +565,13 @@ export const Editor: React.FC<EditorProps> = ({
             </button>
           </div>
           <div className="space-y-4">
-            {(caseData.implementation?.steps ?? []).map((step, index) => (
-              <motion.div 
-                key={step.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="p-5 bg-neutral-50/50 rounded-2xl border border-neutral-200/60 flex gap-5 items-start group"
-              >
-                <div className="w-10 h-10 bg-white border border-neutral-200/60 rounded-xl flex items-center justify-center font-bold text-neutral-400 shrink-0">
-                  {index + 1}
-                </div>
-                <div className="flex-1 grid grid-cols-3 gap-4">
-                  <div className="col-span-2 space-y-2">
-                    <input 
-                      type="text" 
-                      value={step.title}
-                      onChange={(e) => {
-                        const newSteps = [...(caseData.implementation?.steps ?? [])];
-                        newSteps[index].title = e.target.value;
-                        setCaseData({ ...caseData, implementation: { ...caseData.implementation, steps: newSteps } });
-                      }}
-                      className="w-full px-4 py-2 bg-white border border-neutral-200/60 rounded-lg focus:border-brand-500 transition-all outline-none font-bold text-sm"
-                      placeholder={caseTypeConfig.stepTitlePlaceholder}
-                    />
-                    <textarea 
-                      value={step.description}
-                      onChange={(e) => {
-                        const newSteps = [...(caseData.implementation?.steps ?? [])];
-                        newSteps[index].description = e.target.value;
-                        setCaseData({ ...caseData, implementation: { ...caseData.implementation, steps: newSteps } });
-                      }}
-                      className="w-full px-4 py-2 bg-white border border-neutral-200/60 rounded-lg focus:border-brand-500 transition-all outline-none text-xs text-neutral-500 min-h-[60px] resize-none"
-                      placeholder={caseTypeConfig.stepDescPlaceholder}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2 items-center">
-                    <div className="relative group/img w-24 h-16 bg-white border border-dashed border-neutral-200 rounded-lg overflow-hidden flex items-center justify-center">
-                      {step.imageUrl ? (
-                        <>
-                          <img src={step.imageUrl} alt="" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                            <label className="p-1.5 bg-white/20 hover:bg-white/40 rounded-lg cursor-pointer transition-colors">
-                              <Upload className="w-3 h-3 text-white" />
-                              <input type="file" className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(index, e.target.files[0])} />
-                            </label>
-                            <button 
-                              onClick={() => {
-                                const newSteps = [...(caseData.implementation?.steps ?? [])];
-                                newSteps[index].imageUrl = '';
-                                setCaseData({ ...caseData, implementation: { ...caseData.implementation, steps: newSteps } });
-                              }}
-                              className="p-1.5 bg-white/20 hover:bg-red-500/40 rounded-lg transition-colors"
-                            >
-                              <Trash2 className="w-3 h-3 text-white" />
-                            </button>
-                          </div>
-                        </>
-                      ) : (
-                        <label className="flex flex-col items-center gap-1 cursor-pointer hover:text-brand-500 transition-colors">
-                          <ImageIcon className="w-4 h-4 text-neutral-300" />
-                          <span className="text-[8px] font-bold text-neutral-400 uppercase">上传图片</span>
-                          <input type="file" className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(index, e.target.files[0])} />
-                        </label>
-                      )}
-                    </div>
-                    <button 
-                      onClick={() => removeStep(step.id)}
-                      className="p-2 text-neutral-300 hover:text-red-500 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={(caseData.implementation?.steps ?? []).map((s) => s.id)} strategy={verticalListSortingStrategy}>
+                {(caseData.implementation?.steps ?? []).map((step, index) => (
+                  <SortableStepCard key={step.id} step={step} index={index} />
+                ))}
+              </SortableContext>
+            </DndContext>
           </div>
         </section>
 

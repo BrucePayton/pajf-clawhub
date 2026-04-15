@@ -1,6 +1,11 @@
 CREATE TABLE IF NOT EXISTS users (
   id VARCHAR(255) PRIMARY KEY,
   username VARCHAR(255) UNIQUE NOT NULL,
+  um_number VARCHAR(128) UNIQUE NOT NULL,
+  real_name VARCHAR(128) NOT NULL,
+  team VARCHAR(128) DEFAULT '',
+  organization VARCHAR(128) DEFAULT '财服总部',
+  default_case_public BOOLEAN DEFAULT FALSE,
   password VARCHAR(255) NOT NULL,
   email VARCHAR(255),
   role VARCHAR(50) DEFAULT 'user',

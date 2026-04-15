@@ -7,7 +7,12 @@ const MAX_CASE_PAYLOAD_BYTES = 18 * 1024 * 1024;
 export interface User {
   uid: string;
   displayName: string;
+  username: string;
+  umNumber: string;
   email: string;
+  team: string;
+  organization: string;
+  defaultCasePublic?: boolean;
   role: string;
   token?: string;
   photoURL?: string;
@@ -24,6 +29,16 @@ export interface LoginResult {
   success: boolean;
   user?: User | null;
   message?: string;
+}
+
+export interface RegisterUserPayload {
+  realName: string;
+  umNumber: string;
+  team: string;
+  organization: string;
+  password: string;
+  email?: string;
+  role?: string;
 }
 
 export interface CaseComment {
@@ -54,11 +69,11 @@ const getAuthHeaders = (user?: User | null): Record<string, string> => {
 
 export const apiService = {
   // Auth
-  login: async (username: string, password: string): Promise<LoginResult> => {
+  login: async (umNumber: string, password: string): Promise<LoginResult> => {
     const response = await fetch(`${API_URL}/api/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: username.trim(), password: password.trim() })
+      body: JSON.stringify({ umNumber: umNumber.trim(), password: password.trim() })
     });
     const data = await response.json().catch(() => ({}));
     if (response.ok) {
@@ -68,11 +83,11 @@ export const apiService = {
   },
 
   // User Management
-  registerUser: async (username: string, password: string, email?: string, role?: string): Promise<{ success: boolean; user?: any; message?: string }> => {
+  registerUser: async (payload: RegisterUserPayload): Promise<{ success: boolean; user?: any; message?: string }> => {
     const response = await fetch(`${API_URL}/api/users/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-      body: JSON.stringify({ username, password, email, role })
+      body: JSON.stringify(payload)
     });
     return await response.json();
   },
@@ -94,6 +109,28 @@ export const apiService = {
       headers: getAuthHeaders(),
     });
     return await response.json();
+  },
+
+  updateMyPreferences: async (payload: { defaultCasePublic: boolean }): Promise<{ success: boolean; user?: User; message?: string }> => {
+    const response = await fetch(`${API_URL}/api/users/me/preferences`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return { success: false, message: data?.message || '更新偏好失败' };
+    return { success: true, user: data?.user };
+  },
+
+  changePassword: async (currentPassword: string, newPassword: string): Promise<{ success: boolean; message?: string }> => {
+    const response = await fetch(`${API_URL}/api/users/me/password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return { success: false, message: data?.message || '修改密码失败' };
+    return { success: true };
   },
 
   // Cases

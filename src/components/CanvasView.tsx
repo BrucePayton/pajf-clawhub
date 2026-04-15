@@ -1,8 +1,8 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Download, Globe, Target, Zap, TrendingUp, Calendar, Clock, CheckCircle, ChevronRight, Layout, FileText, X, ZoomIn, MessageSquare, Send, Trash2 } from 'lucide-react';
+import { ArrowLeft, Download, Globe, Target, Zap, TrendingUp, Calendar, Clock, CheckCircle, ChevronRight, Layout, FileText, X, ZoomIn, MessageSquare, Send, Trash2, Palette, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { Case } from '../types';
-import { exportToPptx } from '../services/pptxService';
+import { exportToPptx, PptxTemplateId, pptxTemplateOptions } from '../services/pptxService';
 import { exportElementToPdf } from '../services/pdfService';
 import { buildExportFileBaseName, getCaseTypeLabel } from '../services/exportMeta';
 import { apiService, CaseComment, User } from '../services/apiService';
@@ -28,6 +28,11 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
   const [newComment, setNewComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const commentsEndRef = useRef<HTMLDivElement | null>(null);
+  const [isCommentDrawerOpen, setIsCommentDrawerOpen] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [templateId, setTemplateId] = useState<PptxTemplateId>(
+    () => (localStorage.getItem('pptx_template_id') as PptxTemplateId) || 'sunrise_orange'
+  );
 
   const loadComments = useCallback(async () => {
     const data = await apiService.getComments(caseData.id);
@@ -73,10 +78,16 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
   };
 
   const handleExport = async () => {
+    setShowTemplatePicker(true);
+  };
+
+  const handleConfirmExport = async () => {
     try {
       showToast('正在生成 PPTX，请稍候...', 'loading');
-      await exportToPptx(caseData);
+      localStorage.setItem('pptx_template_id', templateId);
+      await exportToPptx(caseData, { templateId });
       showToast('PPTX 导出完成，已开始下载');
+      setShowTemplatePicker(false);
     } catch (error) {
       console.error('PPTX export error:', error);
       showToast('PPTX 导出失败，请重试', 'error');
@@ -129,6 +140,13 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
           </div>
         </div>
         <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => setIsCommentDrawerOpen((v) => !v)}
+            className="btn-secondary text-sm"
+          >
+            {isCommentDrawerOpen ? <PanelRightClose className="w-4 h-4 text-brand-500" /> : <PanelRightOpen className="w-4 h-4 text-brand-500" />}
+            留言抽屉
+          </button>
           <button 
             onClick={onEdit}
             className="btn-secondary text-sm"
@@ -295,8 +313,132 @@ export const CanvasView: React.FC<CanvasViewProps> = ({
         </div>
       </main>
 
-      {/* Comments Section -- not included in PPTX/PDF exports */}
-      <section className="mt-8 mb-12 max-w-3xl mx-auto print:hidden">
+      {/* Right Comment Drawer -- not included in PPTX/PDF exports */}
+      <AnimatePresence>
+        {isCommentDrawerOpen && (
+          <motion.aside
+            initial={{ x: 420, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 420, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed right-4 top-24 bottom-4 z-[90] w-[360px] bg-white border border-neutral-200 rounded-2xl shadow-2xl print:hidden flex flex-col"
+          >
+            <div className="p-4 border-b border-neutral-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-neutral-500" />
+                <h2 className="text-sm font-bold">留言讨论</h2>
+                <span className="text-[10px] text-neutral-400 font-bold">{comments.length} 条</span>
+              </div>
+              <button onClick={() => setIsCommentDrawerOpen(false)} className="p-1 text-neutral-400 hover:text-neutral-700">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+              {comments.length === 0 && (
+                <p className="text-sm text-neutral-400 text-center py-6">暂无留言，来说点什么吧</p>
+              )}
+              {comments.map((c) => {
+                const isMine = c.user_id === caseData.ownerId;
+                return (
+                  <div key={c.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[85%] rounded-2xl px-3 py-2 ${isMine ? 'bg-brand-500 text-white' : 'bg-neutral-100 text-neutral-700'}`}>
+                      <div className={`text-[10px] mb-1 ${isMine ? 'text-white/80' : 'text-neutral-500'} flex items-center gap-2`}>
+                        <span className="font-bold">{c.username}</span>
+                        <span>{formatTime(c.created_at)}</span>
+                        {user && (user.uid === c.user_id || user.role === 'admin') && (
+                          <button
+                            onClick={() => handleDeleteComment(c.id)}
+                            className={`p-0.5 rounded ${isMine ? 'hover:bg-white/15' : 'hover:bg-neutral-200'}`}
+                            title="删除留言"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-sm break-words whitespace-pre-wrap">{c.content}</p>
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={commentsEndRef} />
+            </div>
+
+            <div className="p-4 border-t border-neutral-100">
+              <div className="flex gap-2 items-end">
+                <textarea
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value.slice(0, 500))}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePostComment(); } }}
+                  placeholder={user ? '写下你的想法...' : '登录后可以留言'}
+                  disabled={!user}
+                  rows={2}
+                  className="flex-1 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm resize-none focus:outline-none focus:border-brand-300 disabled:opacity-50"
+                />
+                <button
+                  onClick={handlePostComment}
+                  disabled={!user || !newComment.trim() || submitting}
+                  className="px-3 py-2 bg-brand-500 text-white rounded-xl text-sm font-bold disabled:opacity-40"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showTemplatePicker && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.97 }}
+              className="w-full max-w-2xl bg-white rounded-3xl border border-neutral-200 shadow-2xl p-6"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <Palette className="w-5 h-5 text-brand-500" />
+                <h3 className="text-lg font-black text-neutral-900">选择PPTX导出模板</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {pptxTemplateOptions.map((opt) => (
+                  <button
+                    key={opt.id}
+                    onClick={() => setTemplateId(opt.id)}
+                    className={`text-left rounded-2xl border p-4 transition-all ${templateId === opt.id ? 'border-brand-400 bg-brand-50' : 'border-neutral-200 bg-white hover:border-neutral-300'}`}
+                  >
+                    <p className="text-sm font-bold text-neutral-900">{opt.name}</p>
+                    <p className="text-xs text-neutral-500 mt-1">{opt.description}</p>
+                  </button>
+                ))}
+              </div>
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  onClick={() => setShowTemplatePicker(false)}
+                  className="px-4 py-2 rounded-xl border border-neutral-200 text-neutral-600 font-bold text-sm"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleConfirmExport}
+                  className="px-4 py-2 rounded-xl bg-brand-500 text-white font-bold text-sm"
+                >
+                  确认导出
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Deprecated inline comments block, kept hidden for print safety */}
+      <section className="hidden mt-8 mb-12 max-w-3xl mx-auto print:hidden">
         <div className="card-modern p-6">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-8 h-8 bg-neutral-100 rounded-lg flex items-center justify-center">

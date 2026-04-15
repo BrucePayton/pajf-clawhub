@@ -5,7 +5,7 @@ import { buildExportFileBaseName } from "./exportMeta";
 const FONT_ZH = "STKaiti";
 const FONT_EN = "Times New Roman";
 
-const C = {
+const BASE_COLORS = {
   bg: "FFF8F3",
   surface: "FFFFFF",
   accent: "EA580C",
@@ -20,6 +20,38 @@ const C = {
   footer: "A8A29E",
   dark: "1A1A1A",
   darkAccent: "9A3412",
+};
+const C = { ...BASE_COLORS };
+
+export type PptxTemplateId = 'sunrise_orange' | 'amber_modern' | 'tech_orange';
+
+export const pptxTemplateOptions: Array<{ id: PptxTemplateId; name: string; description: string }> = [
+  { id: 'sunrise_orange', name: '晨曦橙', description: '柔和浅橙，适合通用汇报' },
+  { id: 'amber_modern', name: '琥珀现代', description: '高对比橙金，强调指标卡片' },
+  { id: 'tech_orange', name: '科技橙', description: '冷暖融合，科技感更强' },
+];
+
+const TEMPLATE_COLOR_OVERRIDES: Record<PptxTemplateId, Partial<typeof C>> = {
+  sunrise_orange: {},
+  amber_modern: {
+    bg: "FFF7ED",
+    accent: "D97706",
+    accentLight: "F59E0B",
+    accentBand: "FEF3C7",
+    accentSoft: "FFFBEB",
+    darkAccent: "92400E",
+    border: "FCD34D",
+  },
+  tech_orange: {
+    bg: "FFF8F2",
+    accent: "F97316",
+    accentLight: "FB923C",
+    accentBand: "FFE7D6",
+    accentSoft: "FFF4EC",
+    textMuted: "4B5563",
+    darkAccent: "7C2D12",
+    border: "FDBA74",
+  },
 };
 
 const STEPS_PER_MULTI_PAGE = 3;
@@ -639,7 +671,9 @@ function addValueAndRoadmapSlide(
 // ENTRY POINT
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const exportToPptx = async (caseData: Case) => {
+export const exportToPptx = async (caseData: Case, options?: { templateId?: PptxTemplateId }) => {
+  const templateId = options?.templateId || 'sunrise_orange';
+  Object.assign(C, BASE_COLORS, TEMPLATE_COLOR_OVERRIDES[templateId] || {});
   const rawStepCount = (caseData.implementation?.steps || []).length;
   const safeCase = sanitizeCase(caseData);
   const config = CASE_TYPE_PPTX_CONFIG[safeCase.caseType];

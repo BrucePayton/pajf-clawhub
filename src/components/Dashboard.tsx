@@ -27,6 +27,7 @@ interface DashboardProps {
   onLogout: () => void;
   onOpenDbConfig: () => void;
   onOpenUserManagement: () => void;
+  onChangePassword: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -49,7 +50,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onLogin,
   onLogout,
   onOpenDbConfig,
-  onOpenUserManagement
+  onOpenUserManagement,
+  onChangePassword
 }) => {
   const [statusFilter, setStatusFilter] = React.useState<'all' | 'published' | 'draft'>('all');
   const [organizationFilter, setOrganizationFilter] = React.useState<'all' | string>('all');
@@ -295,9 +297,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   )}
                   <div className="flex flex-col">
                     <span className="text-xs font-bold text-neutral-900 leading-tight">{user.displayName}</span>
+                    <span className="text-[10px] text-neutral-400 leading-tight">{user.umNumber}</span>
                     <button onClick={onLogout} className="text-[10px] text-neutral-400 hover:text-red-500 text-left font-bold uppercase tracking-wider">退出登录</button>
                   </div>
                 </div>
+                <button
+                  onClick={onChangePassword}
+                  className="px-3 py-2 bg-white border border-neutral-200 rounded-xl text-xs font-semibold text-neutral-600 hover:text-brand-600 hover:border-brand-200"
+                >
+                  修改密码
+                </button>
                 <button 
                   onClick={onNewCase}
                   className="btn-primary"

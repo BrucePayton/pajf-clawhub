@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { X, UserPlus, Users, Trash2, Shield, User, Mail, Lock } from 'lucide-react';
+import { X, UserPlus, Users, Trash2, Shield, User, Mail, Lock, IdCard, Building2, Briefcase } from 'lucide-react';
 import { apiService } from '../services/apiService';
 
 interface UserManagementPanelProps {
@@ -12,6 +12,10 @@ interface UserManagementPanelProps {
 interface UserData {
   id: string;
   username: string;
+  um_number?: string;
+  real_name?: string;
+  team?: string;
+  organization?: string;
   email?: string;
   role: string;
   created_at?: string;
@@ -26,7 +30,10 @@ export const UserManagementPanel: React.FC<UserManagementPanelProps> = ({
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
-    username: '',
+    realName: '',
+    umNumber: '',
+    team: '',
+    organization: '财服总部',
     password: '',
     email: '',
     role: 'user',
@@ -49,7 +56,7 @@ export const UserManagementPanel: React.FC<UserManagementPanelProps> = ({
 
   useEffect(() => {
     fetchUsers();
-    setFormData({ username: '', password: '', email: '', role: 'user' });
+    setFormData({ realName: '', umNumber: '', team: '', organization: '财服总部', password: '', email: '', role: 'user' });
     setError('');
     setSuccess('');
     setShowForm(false);
@@ -60,21 +67,24 @@ export const UserManagementPanel: React.FC<UserManagementPanelProps> = ({
     setError('');
     setSuccess('');
 
-    if (!formData.username.trim() || !formData.password.trim()) {
-      setError('用户名和密码必填');
+    if (!formData.realName.trim() || !formData.umNumber.trim() || !formData.team.trim() || !formData.organization.trim() || !formData.password.trim()) {
+      setError('姓名、UM号、所属团队、所属组织和密码必填');
       return;
     }
 
-    const result = await apiService.registerUser(
-      formData.username.trim(),
-      formData.password.trim(),
-      formData.email.trim() || undefined,
-      formData.role
-    );
+    const result = await apiService.registerUser({
+      realName: formData.realName.trim(),
+      umNumber: formData.umNumber.trim(),
+      team: formData.team.trim(),
+      organization: formData.organization.trim(),
+      password: formData.password.trim(),
+      email: formData.email.trim() || undefined,
+      role: formData.role,
+    });
 
     if (result.success) {
       setSuccess('用户创建成功');
-      setFormData({ username: '', password: '', email: '', role: 'user' });
+      setFormData({ realName: '', umNumber: '', team: '', organization: '财服总部', password: '', email: '', role: 'user' });
       setShowForm(false);
       fetchUsers();
       onUserCreated?.();
@@ -83,8 +93,8 @@ export const UserManagementPanel: React.FC<UserManagementPanelProps> = ({
     }
   };
 
-  const handleDelete = async (id: string, username: string) => {
-    if (!confirm(`确定要删除用户 "${username}" 吗？`)) return;
+  const handleDelete = async (id: string, displayName: string) => {
+    if (!confirm(`确定要删除用户 "${displayName}" 吗？`)) return;
 
     const result = await apiService.deleteUser(id);
     if (result.success) {
@@ -148,7 +158,7 @@ export const UserManagementPanel: React.FC<UserManagementPanelProps> = ({
               <button
                 onClick={() => {
                   setShowForm(false);
-                  setFormData({ username: '', password: '', email: '', role: 'user' });
+                  setFormData({ realName: '', umNumber: '', team: '', organization: '财服总部', password: '', email: '', role: 'user' });
                   setError('');
                   setSuccess('');
                 }}
@@ -161,16 +171,63 @@ export const UserManagementPanel: React.FC<UserManagementPanelProps> = ({
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider ml-1">用户名 *</label>
+                  <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider ml-1">用户姓名 *</label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
                     <input
                       type="text"
-                      value={formData.username}
-                      onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                      value={formData.realName}
+                      onChange={(e) => setFormData({ ...formData, realName: e.target.value })}
                       className="input-modern pl-10"
-                      placeholder="输入用户名"
+                      placeholder="输入姓名"
                     />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider ml-1">员工UM号 *</label>
+                  <div className="relative">
+                    <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                    <input
+                      type="text"
+                      value={formData.umNumber}
+                      onChange={(e) => setFormData({ ...formData, umNumber: e.target.value })}
+                      className="input-modern pl-10"
+                      placeholder="输入UM号（登录账号）"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider ml-1">所属团队 *</label>
+                  <div className="relative">
+                    <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                    <input
+                      type="text"
+                      value={formData.team}
+                      onChange={(e) => setFormData({ ...formData, team: e.target.value })}
+                      className="input-modern pl-10"
+                      placeholder="输入所属团队"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider ml-1">所属组织 *</label>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                    <select
+                      value={formData.organization}
+                      onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
+                      className="input-modern pl-10 appearance-none"
+                    >
+                      <option value="财服总部">财服总部</option>
+                      <option value="深圳分公司">深圳分公司</option>
+                      <option value="上海分公司">上海分公司</option>
+                      <option value="合肥分公司">合肥分公司</option>
+                      <option value="成都分公司">成都分公司</option>
+                      <option value="内江分公司">内江分公司</option>
+                    </select>
                   </div>
                 </div>
 
@@ -253,7 +310,10 @@ export const UserManagementPanel: React.FC<UserManagementPanelProps> = ({
             <table className="w-full">
               <thead className="bg-neutral-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-[10px] font-black text-neutral-400 uppercase tracking-wider">用户名</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-black text-neutral-400 uppercase tracking-wider">姓名</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-black text-neutral-400 uppercase tracking-wider">UM号</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-black text-neutral-400 uppercase tracking-wider">团队</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-black text-neutral-400 uppercase tracking-wider">组织</th>
                   <th className="px-4 py-3 text-left text-[10px] font-black text-neutral-400 uppercase tracking-wider">邮箱</th>
                   <th className="px-4 py-3 text-left text-[10px] font-black text-neutral-400 uppercase tracking-wider">角色</th>
                   <th className="px-4 py-3 text-left text-[10px] font-black text-neutral-400 uppercase tracking-wider">创建时间</th>
@@ -266,11 +326,14 @@ export const UserManagementPanel: React.FC<UserManagementPanelProps> = ({
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 bg-brand-50 rounded-lg flex items-center justify-center text-brand-600 font-bold text-xs">
-                          {user.username.charAt(0).toUpperCase()}
+                          {(user.real_name || user.username || '-').charAt(0).toUpperCase()}
                         </div>
-                        <span className="font-bold text-sm text-neutral-900">{user.username}</span>
+                        <span className="font-bold text-sm text-neutral-900">{user.real_name || user.username}</span>
                       </div>
                     </td>
+                    <td className="px-4 py-3 text-sm text-neutral-600 whitespace-nowrap">{user.um_number || user.username || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-neutral-600 whitespace-nowrap">{user.team || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-neutral-600 whitespace-nowrap">{user.organization || '-'}</td>
                     <td className="px-4 py-3 text-sm text-neutral-500">{user.email || '-'}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
@@ -285,7 +348,7 @@ export const UserManagementPanel: React.FC<UserManagementPanelProps> = ({
                     <td className="px-4 py-3 text-right">
                       {user.role !== 'admin' && (
                         <button
-                          onClick={() => handleDelete(user.id, user.username)}
+                          onClick={() => handleDelete(user.id, user.real_name || user.username)}
                           className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                           title="删除用户"
                         >
@@ -297,7 +360,7 @@ export const UserManagementPanel: React.FC<UserManagementPanelProps> = ({
                 ))}
                 {users.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-12 text-center text-neutral-400">
+                    <td colSpan={9} className="px-4 py-12 text-center text-neutral-400">
                       暂无用户
                     </td>
                   </tr>

@@ -35,11 +35,11 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Case, CaseStep, MetricCard, RoadmapItem, DbConfig, CaseType, CaseTypeMeta } from './types';
-import { exportToPptx } from './services/pptxService';
 import { apiService, User } from './services/apiService';
 import { Toast, ConfirmDialog } from './components/Common';
 import { LoginModal } from './components/LoginModal';
 import { DbConfigModal } from './components/DbConfigModal';
+import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { Dashboard } from './components/Dashboard';
 import { Editor } from './components/Editor';
 import { CanvasView } from './components/CanvasView';
@@ -175,6 +175,7 @@ const createNewCase = (caseType: CaseType = 'openclaw_app'): Case => {
         { id: '3', task: '推广复制', content: '主要内容：[……]', date: '2026.06' },
       ],
     },
+    isPublic: false,
   };
 };
 
@@ -191,6 +192,7 @@ export default function App() {
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showDbConfig, setShowDbConfig] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const [menuKey, setMenuKey] = useState<MenuKey>('overview');
   const [dbConfig, setDbConfig] = useState<DbConfig>({
     host: 'localhost',
@@ -318,7 +320,16 @@ export default function App() {
       return;
     }
     const currentType = mapMenuToCaseType(menuKey) || 'openclaw_app';
-    const newCase = { ...createNewCase(currentType), ownerId: user.uid, author: user.displayName || '', caseType: currentType };
+    const newCase = {
+      ...createNewCase(currentType),
+      ownerId: user.uid,
+      author: user.displayName || '',
+      umNumber: user.umNumber || '',
+      team: user.team || '',
+      organization: (user.organization as any) || '财服总部',
+      isPublic: user.defaultCasePublic === true,
+      caseType: currentType,
+    };
 
     // Create in DB immediately as requested
     try {
@@ -502,14 +513,24 @@ export default function App() {
       setUser(result.user);
       localStorage.setItem('internal_user', JSON.stringify(result.user));
       setShowLoginModal(false);
-      showToast(`欢迎回来，${result.user?.displayName || u}`);
+      showToast(`欢迎回来，${result.user?.displayName || result.user?.umNumber || u}`);
 
       // Reload cases with new user context after a short delay
       setTimeout(() => {
         refreshCasesOnce(result.user?.uid, mapMenuToCaseType(menuKey));
       }, 500);
     } else {
-      showToast(result.message || '用户名或密码错误', 'error');
+      showToast(result.message || 'UM号或密码错误', 'error');
+    }
+  };
+
+  const handleVisibilityPreferenceChange = async (isPublic: boolean) => {
+    if (!user) return;
+    const result = await apiService.updateMyPreferences({ defaultCasePublic: isPublic });
+    if (result.success && result.user) {
+      const merged = { ...user, ...result.user, token: user.token };
+      setUser(merged);
+      localStorage.setItem('internal_user', JSON.stringify(merged));
     }
   };
 
@@ -552,17 +573,6 @@ export default function App() {
 
   const handleTestDbConfig = async (config: DbConfig) => {
     return apiService.testDbConnection(config);
-  };
-
-  const handleExportPptx = async (caseData: Case) => {
-    try {
-      showToast('正在生成 PPTX，请稍候...', 'loading');
-      await exportToPptx(caseData);
-      showToast('PPTX 导出完成，已开始下载');
-    } catch (error) {
-      console.error('PPTX export error:', error);
-      showToast('PPTX 导出失败，请重试', 'error');
-    }
   };
 
   const moduleMeta: Record<MenuKey, { pageTitle: string; pageSubtitle: string; emptyTitle: string; emptySubtitle: string; showOverviewInsights?: boolean }> = {
@@ -699,6 +709,7 @@ export default function App() {
                 onLogout={handleLogout}
                 onOpenDbConfig={() => setShowDbConfig(true)}
                 onOpenUserManagement={() => setMenuKey('user_management')}
+                onChangePassword={() => setShowChangePassword(true)}
               />
             )}
           </main>
@@ -715,6 +726,7 @@ export default function App() {
           }}
           onSave={handleSave}
           onPublish={handlePublish}
+          onVisibilityPreferenceChange={handleVisibilityPreferenceChange}
           showToast={showToast}
         />
       )}
@@ -750,7 +762,7 @@ export default function App() {
         )}
 
         {showLoginModal && (
-          <LoginModal 
+      <LoginModal 
             key="login-modal"
             onLogin={handleLogin}
             onClose={() => setShowLoginModal(false)}
@@ -765,6 +777,21 @@ export default function App() {
             onSave={handleSaveDbConfig}
             onReset={handleResetDbConfig}
             onTest={handleTestDbConfig}
+          />
+        )}
+
+        {showChangePassword && (
+          <ChangePasswordModal
+            onClose={() => setShowChangePassword(false)}
+            onSubmit={async (currentPassword, newPassword) => {
+              const result = await apiService.changePassword(currentPassword, newPassword);
+              if (result.success) {
+                showToast('密码修改成功，请妥善保管');
+                setShowChangePassword(false);
+              } else {
+                showToast(result.message || '修改密码失败', 'error');
+              }
+            }}
           />
         )}
       </AnimatePresence>
